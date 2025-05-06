@@ -1,0 +1,17 @@
+[project]
+name = "us-congressional-districts"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Nikhil Woodruff", email = "nikhil.woodruff@outlook.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[project.scripts]
+us-congressional-districts = "us_congressional_districts:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
