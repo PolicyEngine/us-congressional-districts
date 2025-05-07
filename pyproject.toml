@@ -1,13 +1,23 @@
 [project]
 name = "us-congressional-districts"
 version = "0.1.0"
-description = "Add your description here"
+description = "US Congressional District Level Estimation"
 readme = "README.md"
 authors = [
-    { name = "Nikhil Woodruff", email = "nikhil.woodruff@outlook.com" }
+    { name = "Nikhil Woodruff", email = "nikhil.woodruff@policyengine.org" },
+    { name = "Max Ghenis", email = "max.ghenis@policyengine.org" },
+    { name = "Ben Ogorek", email = "ben.ogorek@policyengine.org" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "torch",
+    "pandas",
+    "numpy",
+    "us",
+    "geopandas",
+    "h5py",
+    "matplotlib"  # TODO: switch to plotly
+]
 
 [project.scripts]
 us-congressional-districts = "us_congressional_districts:main"
