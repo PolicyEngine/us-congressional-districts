@@ -1,0 +1,24 @@
+# Workflow that runs on code changes to a pull request.
+
+name: PR code changes
+on:
+  pull_request:
+    branches:
+      - main
+
+    paths:
+      - src/**
+      - tests/**
+      - .github/workflows/pr_code_changes.yaml
+
+jobs:
+  Lint:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v4
+        - name: Install uv
+          uses: astral-sh/setup-uv@v5
+        - name: Check formatting with ruff
+          run: |
+            uv pip install ruff
+            ruff check --fix --exit-zero

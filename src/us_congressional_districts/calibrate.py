@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 import pandas as pd
 import numpy as np
@@ -208,12 +207,12 @@ def calibrate(
     for epoch in desc:
         optimizer.zero_grad()
         weights_ = torch.exp(weights) * r
-        l = loss(weights_)
-        l.backward()
+        loss_value = loss(weights_)
+        loss_value.backward()
         optimizer.step()
 
         if epoch % 1 == 0:
-            print(f"Loss: {l.item()}, Epoch: {epoch}")
+            print(f"Loss: {loss_value.item()}, Epoch: {epoch}")
         if epoch % 10 == 0:
             final_weights = (torch.exp(weights) * r).detach().numpy()
 

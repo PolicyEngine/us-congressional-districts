@@ -1,10 +1,8 @@
 import geopandas as gpd
-import pandas as pd
 import requests
 import io
-import zipfile
-from pathlib import Path
 
+import matplotlib.pyplot as plt
 from us_congressional_districts.utils import get_data_directory
 
 
@@ -42,7 +40,7 @@ print(gdf_cd.head())
 
 if geoid_col_shp not in gdf_cd.columns:
     print(f"Error: Expected GEOID column '{geoid_col_shp}' not found in the shapefile.")
-    print(f"Please inspect the columns above and adjust 'geoid_col_shp'.")
+    print("Please inspect the columns above and adjust 'geoid_col_shp'.")
     exit()
 if name_col_shp not in gdf_cd.columns:
     print(
@@ -70,7 +68,6 @@ df_district_coords.to_csv(csv_output_path, index=False)
 
 
 # --- Optional: Basic Plot of Districts and their Centroids ---
-import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots(1, 1, figsize=(12, 8))
 gdf_cd.plot(ax=ax, facecolor="lightblue", edgecolor="grey", linewidth=0.5, alpha=0.7)

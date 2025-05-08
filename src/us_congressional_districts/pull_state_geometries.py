@@ -1,9 +1,9 @@
-from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
 import us as us_states_lib
 
+import matplotlib.pyplot as plt
 from us_congressional_districts.utils import get_data_directory
 
 
@@ -73,7 +73,6 @@ df_coordinates[output_cols].to_csv(csv_file, index=False)
 
 
 # --- Optional: Example of how you might use these coordinates for a basic plot ---
-import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots(figsize=(15, 9))
 
