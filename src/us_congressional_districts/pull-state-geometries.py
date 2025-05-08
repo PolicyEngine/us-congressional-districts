@@ -97,4 +97,4 @@ for index, row in df_coordinates.iterrows():
 
 ax.set_axis_off() # Turn off the x/y axis lines and labels
 ax.set_title("Generated X, Y Coordinates for US State Hexagons")
-plt.show()
+# plt.show()

@@ -8,15 +8,18 @@ authors = [
     { name = "Max Ghenis", email = "max.ghenis@policyengine.org" },
     { name = "Ben Ogorek", email = "ben.ogorek@policyengine.org" }
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
-    "torch",
-    "pandas",
-    "numpy",
-    "us",
-    "geopandas",
-    "h5py",
-    "matplotlib"  # TODO: switch to plotly
+    "geopandas>=1.0.1",
+    "h5py>=3.13.0",
+    "jupyter-book>=1.0.4.post1",
+    "matplotlib>=3.10.1",
+    "numpy>=2.2.5",
+    "pandas>=2.2.3",
+    "pip-system-certs>=4.0",
+    "ruff>=0.11.8",
+    "torch>=2.7.0",
+    "us>=3.2.0",
 ]
 
 [project.scripts]

@@ -6,12 +6,25 @@ import numpy as np
 import torch
 import h5py
 from policyengine_us import Microsimulation
-
+from huggingface_hub import hf_hub_download
 from us_congressional_districts.utils import get_data_directory
+from policyengine_core.data import Dataset
+
+def get_dataset(dataset: str = "cps_2023", time_period = 2023) -> pd.DataFrame:
+    """
+    Get the dataset from the huggingface hub.
+    """
+    dataset_path = hf_hub_download(
+        repo_id="policyengine/policyengine-us-data",
+        filename=f"{dataset}.h5",
+        local_dir=get_data_directory() / "input" / "cps",
+    )
+
+    return Dataset.from_file(dataset_path, time_period=time_period)
 
 
 def create_district_metric_matrix(
-    dataset: str = "cps_2022",
+    dataset: str = None,
     ages: pd.DataFrame = pd.DataFrame(),
     time_period: int = 2022
 ):
@@ -30,7 +43,7 @@ def create_district_metric_matrix(
             lower_age, upper_age = age_range.split("-")
             in_age_band = (age >= int(lower_age)) & (age < int(upper_age))
         else:
-            in_age_band = age >= 85 
+            in_age_band = age >= 85
 
         matrix[f"age/{age_range}"] = sim.map_result(
             in_age_band, "person", "household"
@@ -58,9 +71,9 @@ def create_target_matrix(ages):
 
 
 def create_state_mask(
-    dataset: str = "cps_2022",
+    dataset: str = None,
     districts: pd.Series = pd.Series(['5001800US5600']),
-    time_period: int = 2022
+    time_period: int = 2023
 ) -> np.ndarray:
     """
     Create a matrix R to accompany the loss matrix M s.t. (W x M) x R = Y_
@@ -127,7 +140,6 @@ def create_district_to_state_matrix():
 
 def calibrate(
     epochs: int = 128,
-    overwrite_ecps = True
 ):
 
     # Target data sets (there's probably a better way to do this)
@@ -143,21 +155,22 @@ def calibrate(
         get_data_directory() / "input" / "demographics" / "age-national.csv"
     )
 
+    dataset = get_dataset("cps_2023", 2023)
     # the metrics matrix
-    matrix_ = create_district_metric_matrix("cps_2022", ages_district, 2022)
-    state_mask = create_state_mask("cps_2022", ages_district.GEO_ID, 2022)
+    matrix_ = create_district_metric_matrix(dataset, ages_district, 2023)
+    state_mask = create_state_mask(dataset, ages_district.GEO_ID, 2023)
     
     y_= create_target_matrix(ages_district)
     y_national_= create_target_matrix(ages_national)
     y_state_= create_target_matrix(ages_state)
 
-    sim = Microsimulation(dataset = "cps_2022")
-    sim.default_calculation_period = 2022
+    sim = Microsimulation(dataset = dataset)
+    sim.default_calculation_period = 2023
 
     COUNT_DISTRICTS = 435 
 
     original_weights = np.log(
-        sim.calculate("household_weight", 2022).values / COUNT_DISTRICTS
+        sim.calculate("household_weight").values / COUNT_DISTRICTS
     )
 
     weights = torch.tensor(

@@ -109,6 +109,6 @@ def pull_age_data(geo, year):
         df_geos.to_csv(SAVE_DIR / "age-national.csv", index=False)
 
 if __name__ == "__main__":
-    pull_age_data("National", 2022)
-    pull_age_data("State", 2022)
-    pull_age_data("District", 2022)
+    pull_age_data("National", 2023)
+    pull_age_data("State", 2023)
+    pull_age_data("District", 2023)
