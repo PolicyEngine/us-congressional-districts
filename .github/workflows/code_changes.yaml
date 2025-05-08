@@ -35,6 +35,8 @@ jobs:
           run: |
             uv pip install -e . --system
             uv pip install policyengine-us --system
+        - name: Build data
+          run: make data
         - name: Run tests
           run: make test
         - name: Build documentation
