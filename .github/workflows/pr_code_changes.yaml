@@ -32,7 +32,9 @@ jobs:
           with:
               python-version: '3.11'
         - name: Install dependencies
-          run: make install-uv
+          run: |
+            uv pip install -e . --system
+            uv pip install policyengine-us --system
         - name: Run tests
           run: make test
         - name: Build documentation
