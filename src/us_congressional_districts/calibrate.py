@@ -10,7 +10,8 @@ from huggingface_hub import hf_hub_download
 from us_congressional_districts.utils import get_data_directory
 from policyengine_core.data import Dataset
 
-def get_dataset(dataset: str = "cps_2023", time_period = 2023) -> pd.DataFrame:
+
+def get_dataset(dataset: str = "cps_2023", time_period=2023) -> pd.DataFrame:
     """
     Get the dataset from the huggingface hub.
     """
@@ -24,9 +25,7 @@ def get_dataset(dataset: str = "cps_2023", time_period = 2023) -> pd.DataFrame:
 
 
 def create_district_metric_matrix(
-    dataset: str = None,
-    ages: pd.DataFrame = pd.DataFrame(),
-    time_period: int = 2022
+    dataset: str = None, ages: pd.DataFrame = pd.DataFrame(), time_period: int = 2022
 ):
     ages_count_matrix = ages.iloc[:, 2:]
     age_ranges = list(ages_count_matrix.columns)
@@ -45,9 +44,7 @@ def create_district_metric_matrix(
         else:
             in_age_band = age >= 85
 
-        matrix[f"age/{age_range}"] = sim.map_result(
-            in_age_band, "person", "household"
-        )
+        matrix[f"age/{age_range}"] = sim.map_result(in_age_band, "person", "household")
 
     return matrix
 
@@ -72,8 +69,8 @@ def create_target_matrix(ages):
 
 def create_state_mask(
     dataset: str = None,
-    districts: pd.Series = pd.Series(['5001800US5600']),
-    time_period: int = 2023
+    districts: pd.Series = pd.Series(["5001800US5600"]),
+    time_period: int = 2023,
 ) -> np.ndarray:
     """
     Create a matrix R to accompany the loss matrix M s.t. (W x M) x R = Y_
@@ -85,7 +82,7 @@ def create_state_mask(
     sim.default_calculation_period = time_period
 
     household_states = sim.calculate("state_fips").values
-    district_states = districts.str[9:11].astype(np.int32) 
+    district_states = districts.str[9:11].astype(np.int32)
     r = np.zeros((len(districts), len(household_states)))
 
     for i in range(len(districts)):
@@ -110,38 +107,38 @@ def create_district_to_state_matrix():
 
     district_state_codes = [dist_id[9:11] for dist_id in districts]
     state_codes = [state_id[9:11] for state_id in states]
-    
+
     # Create mapping from state code to state index (position in the states Series)
     state_code_to_idx = {code: idx for idx, code in enumerate(state_codes)}
-    
+
     # Create indices and values for sparse tensor
     indices = []
     for dist_idx, state_code in enumerate(district_state_codes):
         if state_code in state_code_to_idx:  # Safety check
             state_idx = state_code_to_idx[state_code]
             indices.append([state_idx, dist_idx])
-    
+
     # Check if we have any valid mappings
     if not indices:
-        raise ValueError("No valid district-to-state mappings found. Check the ID formats.")
-    
+        raise ValueError(
+            "No valid district-to-state mappings found. Check the ID formats."
+        )
+
     # Convert to tensors
     indices = torch.tensor(indices, dtype=torch.long).t()
     values = torch.ones(len(indices[0]), dtype=torch.float)
-    
+
     # Create sparse tensor
     mapping_matrix = torch.sparse.FloatTensor(
-        indices, values, 
-        torch.Size([num_states, num_districts])
+        indices, values, torch.Size([num_states, num_districts])
     )
-    
-    return mapping_matrix 
+
+    return mapping_matrix
 
 
 def calibrate(
     epochs: int = 128,
 ):
-
     # Target data sets (there's probably a better way to do this)
     ages_district = pd.read_csv(
         get_data_directory() / "input" / "demographics" / "age-district.csv"
@@ -159,23 +156,22 @@ def calibrate(
     # the metrics matrix
     matrix_ = create_district_metric_matrix(dataset, ages_district, 2023)
     state_mask = create_state_mask(dataset, ages_district.GEO_ID, 2023)
-    
-    y_= create_target_matrix(ages_district)
-    y_national_= create_target_matrix(ages_national)
-    y_state_= create_target_matrix(ages_state)
 
-    sim = Microsimulation(dataset = dataset)
+    y_ = create_target_matrix(ages_district)
+    y_national_ = create_target_matrix(ages_national)
+    y_state_ = create_target_matrix(ages_state)
+
+    sim = Microsimulation(dataset=dataset)
     sim.default_calculation_period = 2023
 
-    COUNT_DISTRICTS = 435 
+    COUNT_DISTRICTS = 435
 
     original_weights = np.log(
         sim.calculate("household_weight").values / COUNT_DISTRICTS
     )
 
     weights = torch.tensor(
-        np.ones((COUNT_DISTRICTS, len(original_weights)))
-        * original_weights,
+        np.ones((COUNT_DISTRICTS, len(original_weights))) * original_weights,
         dtype=torch.float32,
         requires_grad=True,
     )
@@ -222,16 +218,15 @@ def calibrate(
             final_weights = (torch.exp(weights) * r).detach().numpy()
 
             with h5py.File(
-                get_data_directory()
-                / "output"
-                / "congressional_district_weights.h5", "w"
+                get_data_directory() / "output" / "congressional_district_weights.h5",
+                "w",
             ) as f:
                 f.create_dataset("2022", data=final_weights)
 
             # TODO: figure out strategy for ensuring that the file to overwrite
             # is here and ready to be read from
             #
-            #if overwrite_ecps:
+            # if overwrite_ecps:
             #    with h5py.File(
             #        get_data_directory() / "output" / "enhanced_cps_2022.h5",
             #        "r+"

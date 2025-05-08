@@ -12,11 +12,13 @@ def get_data_directory() -> pathlib.Path:
 
     return inputs_dir
 
+
 def main():
     inputs_directory = get_data_directory()
 
     print(f"The inputs directory is: {inputs_directory}")
     print(f"Does the inputs directory exist? {inputs_directory.exists()}")
+
 
 if __name__ == "__main__":
     main()
