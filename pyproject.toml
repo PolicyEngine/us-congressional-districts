@@ -10,14 +10,17 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+    "furo>=2024.8.6",
     "geopandas>=1.0.1",
     "h5py>=3.13.0",
-    "jupyter-book>=1.0.4.post1",
+    "jupyter-book==1.0.4.post1",
     "matplotlib>=3.10.1",
     "numpy>=2.2.5",
     "pandas>=2.2.3",
     "pip-system-certs>=4.0",
     "ruff>=0.11.8",
+    "snowballstemmer>=2,<3",
+    "sphinx==7.4.7",
     "torch>=2.7.0",
     "us>=3.2.0",
 ]

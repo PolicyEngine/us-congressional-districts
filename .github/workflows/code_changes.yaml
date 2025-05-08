@@ -20,3 +20,25 @@ jobs:
           run: |
             pip install ruff
             ruff check --fix --exit-zero
+  Test:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v4
+        - name: Install uv
+          uses: astral-sh/setup-uv@v5
+
+        - name: Set up Python
+          uses: actions/setup-python@v2
+          with:
+              python-version: '3.11'
+        - name: Install dependencies
+          run: make install
+        - name: Run tests
+          run: make test
+        - name: Build documentation
+          run: make documentation
+        - name: Deploy documentation
+          uses: JamesIves/github-pages-deploy-action@releases/v4
+          with:
+            branch: gh-pages
+            folder: docs/_build/html

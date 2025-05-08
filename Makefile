@@ -9,3 +9,9 @@ data:
 install-uv:
 	uv pip install -e .
 	uv pip install policyengine-us
+
+documentation:
+	jb build docs
+
+test:
+	echo "No tests yet"
