@@ -5,3 +5,7 @@ targets:
 
 data:
 	python src/us_congressional_districts/calibrate.py
+
+install-uv:
+	uv pip install -e .
+	uv pip install policyengine-us
