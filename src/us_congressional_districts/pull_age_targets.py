@@ -100,13 +100,13 @@ def pull_age_data(geo, year):
     SAVE_DIR = Path(get_data_directory() / "input" / "demographics")
     if geo == 'District':
         assert(df_geos.shape[0] == 435)
-        df_geos.to_csv(SAVE_DIR / "age-district.csv", index=False)
+        df_geos.to_csv(SAVE_DIR / "age_district.csv", index=False)
     elif geo == 'State':
         assert(df_geos.shape[0] == 50)
-        df_geos.to_csv(SAVE_DIR / "age-state.csv", index=False)
+        df_geos.to_csv(SAVE_DIR / "age_state.csv", index=False)
     elif geo == 'National':
         assert(df_geos.shape[0] == 1)
-        df_geos.to_csv(SAVE_DIR / "age-national.csv", index=False)
+        df_geos.to_csv(SAVE_DIR / "age_national.csv", index=False)
 
 if __name__ == "__main__":
     pull_age_data("National", 2023)
