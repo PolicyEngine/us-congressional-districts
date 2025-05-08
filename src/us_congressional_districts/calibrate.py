@@ -94,11 +94,11 @@ def create_district_to_state_matrix():
     """Create [50, 450] sparse binary matrix mapping states to districts"""
 
     districts = pd.read_csv(
-        get_data_directory() / "input" / "demographics" / "age-district.csv"
+        get_data_directory() / "input" / "demographics" / "age_district.csv"
     ).GEO_ID
 
     states = pd.read_csv(
-        get_data_directory() / "input" / "demographics" / "age-state.csv"
+        get_data_directory() / "input" / "demographics" / "age_state.csv"
     ).GEO_ID
 
     num_districts = len(districts)
