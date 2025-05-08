@@ -1,0 +1,46 @@
+# Workflow that runs on code changes to a pull request.
+
+name: Code changes
+on:
+  push:
+    branches:
+      - main
+
+    paths:
+      - src/**
+      - tests/**
+      - .github/workflows/code_changes.yaml
+
+jobs:
+  Lint:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v4
+        - name: Check formatting with ruff
+          run: |
+            pip install ruff
+            ruff check --fix --exit-zero
+  Test:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v4
+        - name: Install uv
+          uses: astral-sh/setup-uv@v5
+
+        - name: Set up Python
+          uses: actions/setup-python@v2
+          with:
+              python-version: '3.11'
+        - name: Install dependencies
+          run: |
+            uv pip install -e . --system
+            uv pip install policyengine-us --system
+        - name: Run tests
+          run: make test
+        - name: Build documentation
+          run: make documentation
+        - name: Deploy documentation
+          uses: JamesIves/github-pages-deploy-action@releases/v4
+          with:
+            branch: gh-pages
+            folder: docs/_build/html
