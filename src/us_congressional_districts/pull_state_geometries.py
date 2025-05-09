@@ -1,14 +1,13 @@
-
 import geopandas as gpd
 import pandas as pd
 import us as us_states_lib
 
-import matplotlib.pyplot as plt
 from us_congressional_districts.utils import get_data_directory
 
 
 # 1. US States Hex Grid GeoJSON URL
 # This file contains a custom layout for US states as hexagons
+# Article: https://python-graph-gallery.com/hexbin-map-from-geojson-python
 hex_grid_url = "https://raw.githubusercontent.com/holtzy/The-Python-Graph-Gallery/master/static/data/us_states_hexgrid.geojson.json"
 
 # 2. Load the Hex Grid using geopandas
@@ -74,36 +73,85 @@ df_coordinates[output_cols].to_csv(csv_file, index=False)
 
 # --- Optional: Example of how you might use these coordinates for a basic plot ---
 
-fig, ax = plt.subplots(figsize=(15, 9))
+import plotly.graph_objects as go
+import numpy as np
 
-# Plot the hexagon outlines from the original GeoDataFrame for context
-gdf_hex.plot(ax=ax, facecolor="none", edgecolor="lightgray", linewidth=0.5)
+# Create figure
+fig = go.Figure()
 
-# Plot points at the calculated x, y coordinates
-ax.scatter(
-    df_coordinates["x"],
-    df_coordinates["y"],
-    s=50,  # size of markers
-    color="red",
-    alpha=0.7,
-    zorder=5,  # Ensure points are on top
-)
-
-# Add state abbreviations as labels next to the points
-for index, row in df_coordinates.iterrows():
-    ax.text(
-        row["x"]
-        + 0.01
-        * (
-            gdf_hex.total_bounds[2] - gdf_hex.total_bounds[0]
-        ),  # Slight offset for label
-        row["y"],
-        row["state_abbr"],
-        ha="left",
-        va="center",
-        fontsize=7,
+# Add hexagon outlines from the GeoDataFrame
+for idx, row in gdf_hex.iterrows():
+    # Extract geometry coordinates and convert to lists
+    x, y = row.geometry.exterior.xy
+    x_list = list(x)
+    y_list = list(y)
+    
+    fig.add_trace(
+        go.Scatter(
+            x=x_list,
+            y=y_list,
+            mode='lines',
+            line=dict(color='lightgray', width=0.5),
+            fill='none',
+            showlegend=False,
+            hoverinfo='skip'
+        )
     )
 
-ax.set_axis_off()  # Turn off the x/y axis lines and labels
-ax.set_title("Generated X, Y Coordinates for US State Hexagons")
-# plt.show()
+# Add points at the x, y coordinates stored in the dataframe
+fig.add_trace(
+    go.Scatter(
+        x=gdf_hex["x"].tolist(),  # Convert to list to ensure compatibility
+        y=gdf_hex["y"].tolist(),  # Convert to list to ensure compatibility
+        mode="markers",
+        marker=dict(
+            size=12,
+            color="red",
+            opacity=0.7
+        ),
+        showlegend=False,
+        hoverinfo='text',
+        hovertext=gdf_hex["label"].tolist()  # Convert to list
+    )
+)
+
+# Add state abbreviation labels
+fig.add_trace(
+    go.Scatter(
+        x=(gdf_hex["x"] + 0.5).tolist(),  # Convert to list
+        y=gdf_hex["y"].tolist(),  # Convert to list
+        mode="text",
+        text=gdf_hex["label"].tolist(),  # Convert to list
+        textposition="middle right",
+        textfont=dict(
+            size=10,
+        ),
+        showlegend=False,
+        hoverinfo='skip'
+    )
+)
+
+# Update layout
+fig.update_layout(
+    title="US State Hexagon Map",
+    width=1200,
+    height=720,
+    plot_bgcolor='white',
+    margin=dict(l=0, r=0, t=50, b=0),
+    xaxis=dict(
+        showgrid=False,
+        zeroline=False,
+        showticklabels=False,
+        showline=False
+    ),
+    yaxis=dict(
+        showgrid=False,
+        zeroline=False,
+        showticklabels=False,
+        showline=False,
+        scaleanchor="x",  # This ensures the aspect ratio is 1:1
+        scaleratio=1
+    )
+)
+
+fig.show()

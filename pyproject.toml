@@ -22,8 +22,7 @@ dependencies = [
     "snowballstemmer>=2,<3",
     "sphinx==7.4.7",
     "torch>=2.7.0",
-    "us>=3.2.0",
-    "policyengine-us>=1.269.0"
+    "us>=3.2.0"
 ]
 
 [project.scripts]
