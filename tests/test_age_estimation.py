@@ -10,7 +10,7 @@ from us_congressional_districts.utils import get_data_directory
 from us_congressional_districts.calibrate import calibrate
 
 
-def test_too_much_stuff():
+def test_sanity():
     # This is the setup
     calibrate()
     
@@ -24,9 +24,6 @@ def test_too_much_stuff():
     
     assert len([d for d in districts_from_ages if d not in list(districts_official.GEO_ID)]) == 0
     assert len([d for d in districts_official.GEO_ID if d not in list(districts_from_ages)]) == 0
-    
-    
-    # TODO: You should go ahead and get true GEOs too, and make sure the districts line up
     
     # Test that the estimated number of 10, 11, 12, and 13 year olds in
     # district '5001800US0101' is close to the true value
@@ -96,14 +93,3 @@ def test_too_much_stuff():
     # We'll say (for now) that the weights are sufficiently spread out when the
     # Coefficient of Variation is less than 150%
     assert np.std(hh_single_state_weights) / np.mean(hh_single_state_weights) < 1.5
-
-
-
-    
-
-    
-    # TODO: test that the weights are more or less spread out within households
-    # of the same district. I.e., the target value is not just getting put on
-    # a few households. See if you can visualize the weights.
-
-
