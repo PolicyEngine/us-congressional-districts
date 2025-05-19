@@ -28,6 +28,17 @@ dependencies = [
 [project.scripts]
 us-congressional-districts = "us_congressional_districts:main"
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2.0",
+    "pytest-cov>=5.0.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+python_files = "test_*.py tests_*.py *_test.py *_tests.py"
+python_functions = "test_* tests_* *_test *_tests"
+python_classes = "Test* *Tests"

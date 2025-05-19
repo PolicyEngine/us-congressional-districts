@@ -2,15 +2,7 @@ import requests
 import pandas as pd
 from pathlib import Path
 
-from utils import get_data_directory
-
-
-## USER INPUT -----------
-# GEO = "District"
-##GEO = "State"
-##GEO = "National"
-# YEAR = 2022
-## END USER INPUT -------
+from us_congressional_districts.utils import get_data_directory
 
 
 def pull_age_data(geo, year):
@@ -114,6 +106,7 @@ def pull_age_data(geo, year):
 
 
 if __name__ == "__main__":
-    pull_age_data("National", 2023)
-    pull_age_data("State", 2023)
-    pull_age_data("District", 2023)
+    year = 2023
+    pull_age_data("National", year)
+    pull_age_data("State", year)
+    pull_age_data("District", year)
