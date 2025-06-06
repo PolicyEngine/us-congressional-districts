@@ -1,51 +1,36 @@
-# TODOS;
-#  uv pip install openpyxl
-# data/input/geographies/districts.csv
-
+import requests
+import io
 from pathlib import Path
 
 import pandas as pd
-import requests
-import io
+import numpy as np
 
-from us_congressional_districts.utils import get_data_directory
+from us_congressional_districts.utils import get_data_directory, get_state_fips_codes
 
 
-district_lookup = pd.read_csv(Path(get_data_directory() / 'input' / 'geographies' / 'districts.csv'))
-district_lookup["state_fips"]   = district_lookup["GEO_ID"].str[9:11]
-district_lookup["district_code"] = (
-    district_lookup["GEO_ID"].str[11:13].astype(int)
-)
+"""
+https://www.irs.gov/pub/irs-soi/22incd.csv
 
-# May want to add these into a geography utils file later.
-STATE_FIPS = {
-    #  state :  FIPS
-    "al": "01", "ak": "02", "az": "04", "ar": "05", "ca": "06",
-    "co": "08", "ct": "09", "de": "10", "dc": "11", "fl": "12",
-    "ga": "13", "hi": "15", "id": "16", "il": "17", "in": "18",
-    "ia": "19", "ks": "20", "ky": "21", "la": "22", "me": "23",
-    "md": "24", "ma": "25", "mi": "26", "mn": "27", "ms": "28",
-    "mo": "29", "mt": "30", "ne": "31", "nv": "32", "nh": "33",
-    "nj": "34", "nm": "35", "ny": "36", "nc": "37", "nd": "38",
-    "oh": "39", "ok": "40", "or": "41", "pa": "42", "ri": "44",
-    "sc": "45", "sd": "46", "tn": "47", "tx": "48", "ut": "49",
-    "vt": "50", "va": "51", "wa": "53", "wv": "54", "wi": "55",
-    "wy": "56",
-}
+Can't just sum up the district totals to get state totals
+https://www.irs.gov/pub/irs-soi/congressional2022.zip
 
-AGI_ORDER = [
-    "Under $1",
-    "$1 under $10,000",
-    "$10,000 under $25,000",
-    "$25,000 under $50,000",
-    "$50,000 under $75,000",
-    "$75,000 under $100,000",
-    "$100,000 under $200,000",
-    "$200,000 under $500,000",
-    "$500,000 or more",
-]
+For state and National totals
+https://www.irs.gov/statistics/soi-tax-stats-historic-table-2
+"""
 
-# optional: a simpler set of column names for the CSV header
+
+#AGI_ORDER = [
+#    "Under $1",
+#    "$1 under $10,000",
+#    "$10,000 under $25,000",
+#    "$25,000 under $50,000",
+#    "$50,000 under $75,000",
+#    "$75,000 under $100,000",
+#    "$100,000 under $200,000",
+#    "$200,000 under $500,000",
+#    "$500,000 or more",
+#]
+
 AGI_RENAME = {
     "Under $1": "under_1",
     "$1 under $10,000": "1_10k",
@@ -58,88 +43,8 @@ AGI_RENAME = {
     "$500,000 or more": "500k_plus",
 }
 
+AGI_STUB_MAP = {i + 1: label for i, label in enumerate(AGI_RENAME)}
 
-
-def load_cd_agi(state_abbr: str) -> pd.DataFrame:
-    """
-    Fetch IRS SOI AGI-by-district for one state
-    and return a tidy frame with columns
-       GEO_ID | agi_bracket | number_of_individuals
-    (district-0 statewide totals are dropped after an integrity check.)
-    """
-    state_abbr = state_abbr.lower()
-    url = f"https://www.irs.gov/pub/irs-soi/22incd{state_abbr}.xlsx"
-
-    resp = requests.get(url, timeout=30)
-    resp.raise_for_status()
-
-    # ── read the three columns we care about ─────────────────────────
-    cols = ["district", "agi_bracket", "number_of_individuals"]
-    df = (
-        pd.read_excel(
-            io.BytesIO(resp.content),
-            sheet_name="Sheet1",
-            skiprows=6,
-            usecols=[0, 1, 11],
-            header=None,
-            names=cols,
-        )
-        .query("district.notna() and agi_bracket.notna()")
-        .assign(district=lambda d: d["district"].astype(int))
-    )
-
-    # ── integrity check: statewide row must equal Σ(district rows) ──
-    totals = (
-        df[df["district"] == 0]
-        .set_index("agi_bracket")["number_of_individuals"]
-    )
-    parts  = (
-        df[df["district"] != 0]
-        .groupby("agi_bracket")["number_of_individuals"]
-        .sum()
-    )
-
-    # 1) every bracket (except the all-bracket "Total") must match
-    totals_brk = totals.drop(labels="Total", errors="ignore").sort_index()
-    parts      = parts.sort_index()
-    
-    pd.testing.assert_series_equal(        # raises AssertionError if any differ
-        totals_brk, parts,
-        check_names=False,                 # we renamed cols, so ignore the name
-    )
-    
-    # 2) the statewide "Total" must equal the sum of all bracket totals
-    assert totals["Total"] == parts.sum(), (
-        f"Grand totals disagree for {state_abbr.upper()}: "
-        f"statewide row = {totals['Total']:,}, "
-        f"sum(districts) = {parts.sum():,}"
-    )
-
-    # ── attach GEO_IDs ───────────────────────────────────────────────
-    fips = STATE_FIPS[state_abbr]
-    mapping = district_lookup.loc[
-        district_lookup["state_fips"] == fips,
-        ["district_code", "GEO_ID"],
-    ]
-    df = (
-        df.merge(mapping, how="left",
-                 left_on="district", right_on="district_code")
-          .drop(columns="district_code")
-    )
-
-    # ── drop statewide row, reorder, clean columns ───────────────────
-    df = (
-        df[df["district"] != 0]                       # keep real CDs only
-          .drop(columns="district")                  # no longer needed
-          [["GEO_ID", "agi_bracket", "number_of_individuals"]]  # order
-          .reset_index(drop=True)
-    )
-    return df
-
-
-# 3.  ── example usage ────────────────────────────────────────────────
-al = load_cd_agi("al")   # Alabama (districts 1–7 plus statewide row 0)
-nc = load_cd_agi("nc")   # North Carolina (districts 1–14 plus 0)
 
 def agi_wide(df_tall: pd.DataFrame, rename_cols: bool = True) -> pd.DataFrame:
     """Tall → wide pivot; drops the column-index name to hide ‘agi_bracket’."""
@@ -150,57 +55,146 @@ def agi_wide(df_tall: pd.DataFrame, rename_cols: bool = True) -> pd.DataFrame:
             values="number_of_individuals",
             aggfunc="sum",
         )
-        .reindex(columns=AGI_ORDER)
+        .reindex(columns=AGI_STUB_MAP.values())
         .fillna(0)
         .astype(int)
         .reset_index()
     )
-    wide.columns.name = None          # ← remove the annoying header line
+    wide.columns.name = None
     if rename_cols:
         wide = wide.rename(columns=AGI_RENAME)
     return wide
 
-agi_wide(al)
 
-# TODO: some of these are failing their tests - find out why
-# ── 2. loop through every workbook ────────────────────────────────────
-frames = []
-for abbr in STATE_FIPS:          # e.g. 'al', 'ak', …, 'wy', 'dc'
-    print(f"Downloading {abbr.upper()} …")
-    try:
-        frames.append(load_cd_agi(abbr))
-    except Exception as exc:
-        print(f"  ⚠️  {abbr.upper()} skipped ({exc})")
-
-
-# ── 3. stack & pivot ──────────────────────────────────────────────────
-df_tall  = pd.concat(frames, ignore_index=True)
-df_wide  = agi_wide(df_tall)
-
-# TODO: yeah, where are my missing districts? 
-
-# ── 4. save to the requested location ─────────────────────────────────
-out_path = Path(get_data_directory()) / "input" / "soi" / "agi_district.csv"
-out_path.parent.mkdir(parents=True, exist_ok=True)
-df_wide.to_csv(out_path, index=False)
-
-
-
-
-# Ehh, are we going to do this later? 
-from policyengine_us import Microsimulation
-from policyengine_us_data.datasets.cps import EnhancedCPS_2024
-
-sim = Microsimulation(dataset=EnhancedCPS_2024)
-
-agi = (
-    employment_income_last_year
-    + self_employment_income_last_year
-    + dividend_income
-    + interest_income
-    + rental_income
-    + capital_gains
-    + other_income_components
-    - above_the_line_deductions
+# National ----
+national_soi_df = pd.read_excel(
+    "https://www.irs.gov/pub/irs-soi/22in54us.xlsx", skiprows=7
 )
 
+# total-row sanity check
+assert (
+    np.abs(
+        national_soi_df.iloc[0, 1] - national_soi_df.iloc[0, 2:12].sum()
+    ) < 100
+), "Row 0 doesn’t add up — check the file."
+
+# grab the 10 bracket counts
+agi_values = national_soi_df.iloc[0, 2:12].astype(int).to_numpy()
+
+# combine the two highest brackets, as district data stops at $500k+
+agi_values = np.concatenate([agi_values[:8], [agi_values[8] + agi_values[9]]])
+
+## bracket names you want
+#agi_labels = [
+#    "Under $1",
+#    "$1 under $10,000",
+#    "$10,000 under $25,000",
+#    "$25,000 under $50,000",
+#    "$50,000 under $75,000",
+#    "$75,000 under $100,000",
+#    "$100,000 under $200,000",
+#    "$200,000 under $500,000",
+#    "$500,000 or more",  # <-- combined bucket
+#]
+#
+out = (
+    pd.DataFrame(
+        {
+            "GEO_ID": "0100000US",
+            "agi_bracket": AGI_RENAME.keys(),
+            "number_of_individuals": agi_values,
+        }
+    )
+    [["GEO_ID", "agi_bracket", "number_of_individuals"]]
+)
+out_wide = agi_wide(out)
+
+out_path = Path(get_data_directory()) / "input" / "soi" / "agi_national.csv"
+out_wide.to_csv(out_path, index=False)
+
+# State -------------------------------------
+state_soi_df = pd.read_csv(
+    "https://www.irs.gov/pub/irs-soi/22in55cmcsv.csv",
+    thousands=","
+)
+
+np.sum(state_soi_df.loc[state_soi_df.STATE == "AL"].N1) / 2  # 2149560
+df = state_soi_df.copy()
+merged = (
+    df[df["AGI_STUB"].isin([9, 10])]
+    .groupby("STATE", as_index=False)
+    .agg({"N1": "sum"})
+    .assign(AGI_STUB=9)
+)
+
+# Remove old 9+10 and add merged
+df = df[~df["AGI_STUB"].isin([9, 10])]
+df = pd.concat([df, merged], ignore_index=True)
+
+# Drop totals
+df = df[df["AGI_STUB"] != 0]
+
+df["agi_bracket"] = df["AGI_STUB"].map(AGI_STUB_MAP)
+state_fips = get_state_fips_codes()
+df["GEO_ID"] = "0400000US" + df["STATE"].str.lower().map(state_fips)
+out_df = df[["STATE", "GEO_ID", "agi_bracket", "N1"]].rename(columns={"N1": "number_of_individuals"})
+
+NON_VOTING_STATES = {"US", "AS", "GU", "MP", "PR", "VI", "DC", "OA"}
+
+out_df = (
+    out_df.loc[~out_df["STATE"].isin(NON_VOTING_STATES)]
+          .reset_index(drop=True)
+)[["GEO_ID", "agi_bracket", "number_of_individuals"]]
+
+out_wide = agi_wide(out_df)
+
+out_path = Path(get_data_directory()) / "input" / "soi" / "agi_state.csv"
+out_wide.to_csv(out_path, index=False)
+
+
+# Districts -----------------------------------
+
+district_soi_df = pd.read_csv("https://www.irs.gov/pub/irs-soi/22incd.csv")
+
+df = district_soi_df.copy()
+# Step 1: Drop state-level aggregates
+df = df[df["agi_stub"] != 0]
+
+# Step 2: Construct GEO_ID (format: 5001800USSSDD)
+df["STATEFIPS"] = df["STATEFIPS"].astype(int).astype(str).str.zfill(2)
+df["CONG_DISTRICT"] = df["CONG_DISTRICT"].astype(int).astype(str).str.zfill(2)
+df["GEO_ID"] = "5001800US" + df["STATEFIPS"] + df["CONG_DISTRICT"]
+
+df["agi_bracket"] = df["agi_stub"].map(AGI_STUB_MAP)
+
+df = df[["GEO_ID", "CONG_DISTRICT", "STATE", "agi_bracket", "N1"]]
+df = df.rename(columns={"N1": "number_of_individuals"})
+
+df["state_fips"] = df["GEO_ID"].str[-4:-2]
+df["district"]   = df["GEO_ID"].str[-2:]
+
+# 1. find states that really are at-large (just one district in the file)
+at_large_states = (
+    df.groupby("state_fips")["district"]
+      .nunique()
+      .pipe(lambda s: s[s == 1].index)
+)
+
+# 2.  build the clean list
+clean_df = (
+    df.loc[
+        (df["district"] != "00")
+        | (df["state_fips"].isin(at_large_states))
+    ]
+    .query("state_fips != '11'")  # DC
+    .reset_index(drop=True)
+)
+
+# sanity-check
+assert clean_df["GEO_ID"].nunique() == 435
+
+out_df = clean_df[["GEO_ID", "agi_bracket", "number_of_individuals"]]
+
+out_wide = agi_wide(out_df)
+out_path = Path(get_data_directory()) / "input" / "soi" / "agi_district.csv"
+out_wide.to_csv(out_path, index=False)
