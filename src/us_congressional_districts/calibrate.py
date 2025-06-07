@@ -24,7 +24,9 @@ def get_dataset(dataset: str = "cps_2023", time_period=2023) -> pd.DataFrame:
 
 
 def create_district_metric_matrix(
-    dataset: str = None, ages: pd.DataFrame = pd.DataFrame(), time_period: int = 2023
+    dataset: str = None,
+    ages: pd.DataFrame = pd.DataFrame(),
+    time_period: int = 2023,
 ):
     ages_count_matrix = ages.iloc[:, 2:]
     age_ranges = list(ages_count_matrix.columns)
@@ -43,7 +45,9 @@ def create_district_metric_matrix(
         else:
             in_age_band = age >= 85
 
-        matrix[f"age/{age_range}"] = sim.map_result(in_age_band, "person", "household")
+        matrix[f"age/{age_range}"] = sim.map_result(
+            in_age_band, "person", "household"
+        )
 
     return matrix
 
@@ -135,10 +139,7 @@ def create_district_to_state_matrix():
     return mapping_matrix
 
 
-def calibrate(
-    epochs: int = 128,
-    overwrite_ecps: bool = True
-):
+def calibrate(epochs: int = 128, overwrite_ecps: bool = True):
     # Target data sets (there's probably a better way to do this)
     ages_district = pd.read_csv(
         get_data_directory() / "input" / "demographics" / "age_district.csv"
@@ -218,40 +219,48 @@ def calibrate(
             final_weights = (torch.exp(weights) * r).detach().numpy()
 
             with h5py.File(
-                get_data_directory() / "output" / "congressional_district_weights.h5",
+                get_data_directory()
+                / "output"
+                / "congressional_district_weights.h5",
                 "w",
             ) as f:
                 f.create_dataset("2023", data=final_weights)
-           
+
             if overwrite_ecps:
-               with h5py.File(
-                   get_data_directory() / "input" / "cps" / "cps_2023.h5",
-                   "r+"
-               ) as f:
-                   hh_weight_ds_name = "district_reweighting/household_weight/2023"
-                   if hh_weight_ds_name in f:
-                       del f[hh_weight_ds_name]
-                   f.create_dataset(
-                       hh_weight_ds_name, data=final_weights.sum(axis=0)
-                   )
+                with h5py.File(
+                    get_data_directory() / "input" / "cps" / "cps_2023.h5",
+                    "r+",
+                ) as f:
+                    hh_weight_ds_name = (
+                        "district_reweighting/household_weight/2023"
+                    )
+                    if hh_weight_ds_name in f:
+                        del f[hh_weight_ds_name]
+                    f.create_dataset(
+                        hh_weight_ds_name, data=final_weights.sum(axis=0)
+                    )
 
-                   district_weight_ds_name = "district_reweighting/district_weight/2023"
-                   if district_weight_ds_name in f:
-                       del f[district_weight_ds_name]
-                   f.create_dataset(
-                       district_weight_ds_name, data=final_weights.sum(axis=1)
-                   )
+                    district_weight_ds_name = (
+                        "district_reweighting/district_weight/2023"
+                    )
+                    if district_weight_ds_name in f:
+                        del f[district_weight_ds_name]
+                    f.create_dataset(
+                        district_weight_ds_name, data=final_weights.sum(axis=1)
+                    )
 
-                   state_weight_ds_name = "district_reweighting/state_weight/2023"
-                   if state_weight_ds_name in f:
-                       del f[state_weight_ds_name]
-                   f.create_dataset(
-                       state_weight_ds_name,
-                       data=(
-                           district_to_state_matrix.to_dense().numpy()
-                           @ final_weights.sum(axis=1)
-                       )
-                   )
+                    state_weight_ds_name = (
+                        "district_reweighting/state_weight/2023"
+                    )
+                    if state_weight_ds_name in f:
+                        del f[state_weight_ds_name]
+                    f.create_dataset(
+                        state_weight_ds_name,
+                        data=(
+                            district_to_state_matrix.to_dense().numpy()
+                            @ final_weights.sum(axis=1)
+                        ),
+                    )
 
     return final_weights
 
