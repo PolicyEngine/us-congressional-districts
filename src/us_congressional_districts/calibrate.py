@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import pandas as pd
 import numpy as np
@@ -8,6 +9,31 @@ from policyengine_us import Microsimulation
 from huggingface_hub import hf_hub_download
 from us_congressional_districts.utils import get_data_directory
 from policyengine_core.data import Dataset
+
+
+matrix_path = Path(get_data_directory(), "input", "geographies", "district_mapping.csv")
+
+# Mapping matrix logic -----
+mapping_df = pd.read_csv(matrix_path)
+old_codes = sorted(mapping_df.code_old.unique())
+new_codes = sorted(mapping_df.code_new.unique())
+
+assert len(old_codes) == len(new_codes) == 435, "Still not 435×435 after filtering!"
+
+old_index = {c: i for i, c in enumerate(old_codes)}
+new_index = {c: j for j, c in enumerate(new_codes)}
+
+# 3)  Allocate the empty matrix and populate it row-by-row ──────────────────
+mapping_matrix = np.zeros((435, 435), dtype=float)
+
+for row in mapping_df.itertuples(index=False):
+    i = old_index[row.code_old]
+    j = new_index[row.code_new]
+    mapping_matrix[i, j] = row.proportion
+
+assert np.allclose(mapping_matrix.sum(axis=1), 1.0), "Row totals aren't 1.0"
+
+print(mapping_matrix.shape)  # (435, 435)
 
 
 def get_dataset(dataset: str = "cps_2023", time_period=2023) -> pd.DataFrame:
