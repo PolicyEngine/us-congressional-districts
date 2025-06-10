@@ -5,10 +5,14 @@ import pandas as pd
 import numpy as np
 import torch
 import h5py
-from policyengine_us import Microsimulation
 from huggingface_hub import hf_hub_download
-from us_congressional_districts.utils import get_data_directory
+
 from policyengine_core.data import Dataset
+from policyengine_us import Microsimulation
+from us_congressional_districts.utils import get_data_directory
+
+# TODO (baogorek): A task is to use the mapping matrix
+from us_congressional_districts.district_mapping import get_district_mapping_matrix
 
 
 matrix_path = Path(get_data_directory(), "input", "geographies", "district_mapping.csv")

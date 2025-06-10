@@ -17,6 +17,7 @@ import io
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 import us
 
 from us_congressional_districts.utils import get_data_directory
@@ -161,9 +162,6 @@ def build_crosswalk_cd116_to_cd119():
               .groupby(["state_fips", "CD116", "CD119"])["POP20"].sum()
               .rename("pop_shared")
               .reset_index())
-    shares["proportion"] = (
-        shares.groupby("CD116").pop_shared.transform(lambda s: s / s.sum())
-    )
 
     def make_cd_code(state, district):
         return f"5001800US{str(state).zfill(2)}{str(district).zfill(2)}"
@@ -173,6 +171,9 @@ def build_crosswalk_cd116_to_cd119():
     )
     shares["code_new"] = shares.apply(
         lambda row: make_cd_code(row.state_fips, row.CD119), axis=1
+    )
+    shares["proportion"] = (
+        shares.groupby("code_old").pop_shared.transform(lambda s: s / s.sum())
     )
 
     district_mapping = (
@@ -216,4 +217,3 @@ def get_district_mapping_matrix():
 if __name__ == "__main__":
     build_crosswalk_cd116_to_cd119()
     print(get_district_mapping_matrix())
-
