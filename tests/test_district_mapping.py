@@ -11,9 +11,10 @@ def test_mapping_matrix():
     mapping_matrix = get_district_mapping_matrix()
     assert mapping_matrix.shape[0] == mapping_matrix.shape[1] == 435
 
-    diag_avg = np.trace(mapping_matrix) / n
+    total_elements = 435 * 435 
+    diag_avg = np.trace(mapping_matrix) / 435
     total_avg = mapping_matrix.sum() / total_elements
-    offdiag_avg = (mapping_matrix.sum() - np.trace(mapping_matrix)) / (total_elements - n)
+    offdiag_avg = (mapping_matrix.sum() - np.trace(mapping_matrix)) / (total_elements - 435)
     assert diag_avg > offdiag_avg, "Diagonal average is not greater than off-diagonal average"
 
 
