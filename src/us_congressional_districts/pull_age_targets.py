@@ -6,8 +6,12 @@ from us_congressional_districts.utils import get_data_directory
 
 
 def pull_age_data(geo, year):
-    base_url = f"https://api.census.gov/data/{year}/acs/acs1/subject?get=group(S0101)"
-    docs_url = f"https://api.census.gov/data/{year}/acs/acs1/subject/variables.json"
+    base_url = (
+        f"https://api.census.gov/data/{year}/acs/acs1/subject?get=group(S0101)"
+    )
+    docs_url = (
+        f"https://api.census.gov/data/{year}/acs/acs1/subject/variables.json"
+    )
 
     if geo == "State":
         url = f"{base_url}&for=state:*"
@@ -16,7 +20,9 @@ def pull_age_data(geo, year):
     elif geo == "National":
         url = f"{base_url}&for=us:*"
     else:
-        raise ValueError("geo must be either 'National', 'State', or 'District'")
+        raise ValueError(
+            "geo must be either 'National', 'State', or 'District'"
+        )
 
     try:
         response = requests.get(url)
