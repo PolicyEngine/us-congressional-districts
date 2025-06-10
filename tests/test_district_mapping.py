@@ -4,18 +4,24 @@ import numpy as np
 import pandas as pd
 
 from us_congressional_districts.utils import get_data_directory
-from us_congressional_districts.district_mapping import get_district_mapping_matrix
+from us_congressional_districts.district_mapping import (
+    get_district_mapping_matrix,
+)
 
 
 def test_mapping_matrix():
     mapping_matrix = get_district_mapping_matrix()
     assert mapping_matrix.shape[0] == mapping_matrix.shape[1] == 435
 
-    total_elements = 435 * 435 
+    total_elements = 435 * 435
     diag_avg = np.trace(mapping_matrix) / 435
     total_avg = mapping_matrix.sum() / total_elements
-    offdiag_avg = (mapping_matrix.sum() - np.trace(mapping_matrix)) / (total_elements - 435)
-    assert diag_avg > offdiag_avg, "Diagonal average is not greater than off-diagonal average"
+    offdiag_avg = (mapping_matrix.sum() - np.trace(mapping_matrix)) / (
+        total_elements - 435
+    )
+    assert (
+        diag_avg > offdiag_avg
+    ), "Diagonal average is not greater than off-diagonal average"
 
 
 def test_mapping_matrix_precursor():
@@ -35,7 +41,7 @@ def test_mapping_matrix_precursor():
 
     # Check that the position of one number is identical:
     mapping_matrix = get_district_mapping_matrix()
-    
+
     sorted_old = sorted(mapping_df.code_old.unique())
     sorted_new = sorted(mapping_df.code_new.unique())
 

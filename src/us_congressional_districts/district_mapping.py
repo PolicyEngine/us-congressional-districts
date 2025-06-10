@@ -11,6 +11,7 @@ This approach is necessary for states whose initial redistricting maps were alte
 
 By comparing the 116th and 119th Congresses, you bypass the anomalous, non-final maps of the 118th Congress, providing a clear analysis of the redistricting cycle's ultimate impact.
 """
+
 import requests
 import zipfile
 import io
@@ -39,43 +40,41 @@ def fetch_block_to_district_map(congress: int) -> pd.DataFrame:
     if congress == 116:
         url = "https://www2.census.gov/programs-surveys/decennial/rdo/mapping-files/2019/116-congressional-district-bef/cd116.zip"
         zbytes = requests.get(url).content
-        
+
         with zipfile.ZipFile(io.BytesIO(zbytes)) as z:
-            fname = 'National_CD116.txt'
+            fname = "National_CD116.txt"
             bef = pd.read_csv(z.open(fname), dtype=str)
             bef.columns = bef.columns.str.strip()
-            bef = bef.rename(columns={'BLOCKID': 'GEOID'})
-            return bef[['GEOID', f'CD{congress}']]
+            bef = bef.rename(columns={"BLOCKID": "GEOID"})
+            return bef[["GEOID", f"CD{congress}"]]
 
     elif congress == 118:
         url = "https://www2.census.gov/programs-surveys/decennial/rdo/mapping-files/2023/118-congressional-district-bef/cd118.zip"
         zbytes = requests.get(url).content
-        
+
         with zipfile.ZipFile(io.BytesIO(zbytes)) as z:
-            fname = 'National_CD118.txt'
+            fname = "National_CD118.txt"
             bef = pd.read_csv(z.open(fname), dtype=str)
             bef.columns = bef.columns.str.strip()
-            district_col = [c for c in bef.columns if c != 'GEOID'][0]
-            bef = bef.rename(columns={district_col: f'CD{congress}'})
-            return bef[['GEOID', f'CD{congress}']]
+            district_col = [c for c in bef.columns if c != "GEOID"][0]
+            bef = bef.rename(columns={district_col: f"CD{congress}"})
+            return bef[["GEOID", f"CD{congress}"]]
 
     elif congress == 119:
         url = "https://www2.census.gov/programs-surveys/decennial/rdo/mapping-files/2025/119-congressional-district-befs/cd119.zip"
         zbytes = requests.get(url).content
-        
+
         with zipfile.ZipFile(io.BytesIO(zbytes)) as z:
-            fname = 'NationalCD119.txt'
-            bef = pd.read_csv(
-                z.open(fname),
-                sep=',',
-                dtype=str
-            )
+            fname = "NationalCD119.txt"
+            bef = pd.read_csv(z.open(fname), sep=",", dtype=str)
             bef.columns = bef.columns.str.strip()
-            bef = bef.rename(columns={'CDFP': f'CD{congress}'})
-            return bef[['GEOID', f'CD{congress}']]
-            
+            bef = bef.rename(columns={"CDFP": f"CD{congress}"})
+            return bef[["GEOID", f"CD{congress}"]]
+
     else:
-        raise ValueError(f"Congress {congress} is not supported by this function.")
+        raise ValueError(
+            f"Congress {congress} is not supported by this function."
+        )
 
 
 def fetch_block_population(state) -> pd.DataFrame:
@@ -114,40 +113,43 @@ def fetch_block_population(state) -> pd.DataFrame:
         except UnicodeDecodeError:
             geo_lines = raw.decode("latin-1").splitlines()
 
-        p1_lines  = z.read(f"{abbr}000012020.pl").decode("utf-8").splitlines()
+        p1_lines = z.read(f"{abbr}000012020.pl").decode("utf-8").splitlines()
 
     # ---------------- GEO file: keep blocks (SUMLEV 750) ----------------------
     geo_records = [
-        (parts[7], parts[8][-15:])                 # LOGRECNO, 15-digit block GEOID
+        (parts[7], parts[8][-15:])  # LOGRECNO, 15-digit block GEOID
         for ln in geo_lines
-        if (parts := ln.split("|"))[2] == "750"    # summary level 750 = blocks
+        if (parts := ln.split("|"))[2] == "750"  # summary level 750 = blocks
     ]
     geo_df = pd.DataFrame(geo_records, columns=["LOGRECNO", "GEOID"])
 
     # ---------------- P-file: pull total-population cell ----------------------
-    p1_records = [(p[4], int(p[5])) for p in map(lambda x: x.split("|"), p1_lines)]
+    p1_records = [
+        (p[4], int(p[5])) for p in map(lambda x: x.split("|"), p1_lines)
+    ]
     p1_df = pd.DataFrame(p1_records, columns=["LOGRECNO", "P0010001"])
 
     # ---------------- Merge & finish -----------------------------------------
     return (
         geo_df.merge(p1_df, on="LOGRECNO", how="left")
-              .assign(POP20=lambda d: d["P0010001"].fillna(0).astype(int))
-              .loc[:, ["GEOID", "POP20"]]
-              .sort_values("GEOID")
-              .reset_index(drop=True)
+        .assign(POP20=lambda d: d["P0010001"].fillna(0).astype(int))
+        .loc[:, ["GEOID", "POP20"]]
+        .sort_values("GEOID")
+        .reset_index(drop=True)
     )
+
 
 def build_crosswalk_cd116_to_cd119():
     """Builds the crosswalk between 116th and 119th congress"""
     # Pull the census block level population data one state at a time
     state_pops = []
     for s in us.states.STATES_AND_TERRITORIES:
-       if not s.is_territory and s.abbr not in ['DC', 'ZZ']:
-           print(s.name)
-           state_pops.append(fetch_block_population(s.abbr))
+        if not s.is_territory and s.abbr not in ["DC", "ZZ"]:
+            print(s.name)
+            state_pops.append(fetch_block_population(s.abbr))
     block_pop_df = pd.concat(state_pops)
-    
-    # Get census blocks for each district under the 116th and 119th congress    
+
+    # Get census blocks for each district under the 116th and 119th congress
     # Remove 'ZZ': blocks not assigned to any congressional district
     df116 = fetch_block_to_district_map(116)
     df116 = df116.loc[df116["CD116"] != "ZZ"]
@@ -158,28 +160,30 @@ def build_crosswalk_cd116_to_cd119():
 
     block_stats = block_pop_df.merge(common_blocks, on="GEOID")
     block_stats["state_fips"] = block_stats.GEOID.str[:2]
-    shares = (block_stats
-              .groupby(["state_fips", "CD116", "CD119"])["POP20"].sum()
-              .rename("pop_shared")
-              .reset_index())
+    shares = (
+        block_stats.groupby(["state_fips", "CD116", "CD119"])["POP20"]
+        .sum()
+        .rename("pop_shared")
+        .reset_index()
+    )
 
     def make_cd_code(state, district):
         return f"5001800US{str(state).zfill(2)}{str(district).zfill(2)}"
-    
+
     shares["code_old"] = shares.apply(
         lambda row: make_cd_code(row.state_fips, row.CD116), axis=1
     )
     shares["code_new"] = shares.apply(
         lambda row: make_cd_code(row.state_fips, row.CD119), axis=1
     )
-    shares["proportion"] = (
-        shares.groupby("code_old").pop_shared.transform(lambda s: s / s.sum())
+    shares["proportion"] = shares.groupby("code_old").pop_shared.transform(
+        lambda s: s / s.sum()
     )
 
     district_mapping = (
         shares[["code_old", "code_new", "proportion"]]
-            .sort_values(["code_old", "proportion"], ascending=[True, False])
-            .reset_index(drop=True)
+        .sort_values(["code_old", "proportion"], ascending=[True, False])
+        .reset_index(drop=True)
     )
     assert len(set(district_mapping.code_old)) == 435
     assert len(set(district_mapping.code_new)) == 435
@@ -204,12 +208,12 @@ def get_district_mapping_matrix():
     new_index = {c: j for j, c in enumerate(new_codes)}
 
     mapping_matrix = np.zeros((435, 435), dtype=float)
-    
+
     for row in mapping_df.itertuples(index=False):
         i = old_index[row.code_old]
         j = new_index[row.code_new]
         mapping_matrix[i, j] = row.proportion
-    
+
     assert np.allclose(mapping_matrix.sum(axis=1), 1.0)
     return mapping_matrix
 

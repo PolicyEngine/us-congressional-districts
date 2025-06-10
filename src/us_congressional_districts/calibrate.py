@@ -12,17 +12,23 @@ from policyengine_us import Microsimulation
 from us_congressional_districts.utils import get_data_directory
 
 # TODO (baogorek): A task is to use the mapping matrix
-from us_congressional_districts.district_mapping import get_district_mapping_matrix
+from us_congressional_districts.district_mapping import (
+    get_district_mapping_matrix,
+)
 
 
-matrix_path = Path(get_data_directory(), "input", "geographies", "district_mapping.csv")
+matrix_path = Path(
+    get_data_directory(), "input", "geographies", "district_mapping.csv"
+)
 
 # Mapping matrix logic -----
 mapping_df = pd.read_csv(matrix_path)
 old_codes = sorted(mapping_df.code_old.unique())
 new_codes = sorted(mapping_df.code_new.unique())
 
-assert len(old_codes) == len(new_codes) == 435, "Still not 435×435 after filtering!"
+assert (
+    len(old_codes) == len(new_codes) == 435
+), "Still not 435×435 after filtering!"
 
 old_index = {c: i for i, c in enumerate(old_codes)}
 new_index = {c: j for j, c in enumerate(new_codes)}
