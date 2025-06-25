@@ -1,0 +1,436 @@
+GEO_ID,NAME,overall,no_under18,with_under18,no_under60,with_under60
+5001800US0101,"Congressional District 1 (118th Congress), Alabama",38727,20096,18631,24251,14476
+5001800US0102,"Congressional District 2 (118th Congress), Alabama",45922,22833,23089,29215,16707
+5001800US0103,"Congressional District 3 (118th Congress), Alabama",42643,24425,18218,26154,16489
+5001800US0104,"Congressional District 4 (118th Congress), Alabama",40443,20919,19524,24124,16319
+5001800US0105,"Congressional District 5 (118th Congress), Alabama",24698,12335,12363,14420,10278
+5001800US0106,"Congressional District 6 (118th Congress), Alabama",25353,11321,14032,17784,7569
+5001800US0107,"Congressional District 7 (118th Congress), Alabama",65168,37943,27225,39555,25613
+5001800US0200,"Congressional District (at Large) (118th Congress), Alaska",27087,14710,12377,17502,9585
+5001800US0401,"Congressional District 1 (118th Congress), Arizona",18708,10922,7786,12442,6266
+5001800US0402,"Congressional District 2 (118th Congress), Arizona",41751,20725,21026,23727,18024
+5001800US0403,"Congressional District 3 (118th Congress), Arizona",46138,18129,28009,32760,13378
+5001800US0404,"Congressional District 4 (118th Congress), Arizona",27003,12437,14566,19159,7844
+5001800US0405,"Congressional District 5 (118th Congress), Arizona",13888,6093,7795,7373,6515
+5001800US0406,"Congressional District 6 (118th Congress), Arizona",29865,19264,10601,16017,13848
+5001800US0407,"Congressional District 7 (118th Congress), Arizona",56430,26958,29472,33045,23385
+5001800US0408,"Congressional District 8 (118th Congress), Arizona",29079,15983,13096,17246,11833
+5001800US0409,"Congressional District 9 (118th Congress), Arizona",31289,15212,16077,15655,15634
+5001800US0501,"Congressional District 1 (118th Congress), Arkansas",37622,21097,16525,24554,13068
+5001800US0502,"Congressional District 2 (118th Congress), Arkansas",18993,9843,9150,12018,6975
+5001800US0503,"Congressional District 3 (118th Congress), Arkansas",14230,6834,7396,9394,4836
+5001800US0504,"Congressional District 4 (118th Congress), Arkansas",31720,19058,12662,19034,12686
+5001800US0601,"Congressional District 1 (118th Congress), California",49278,30978,18300,29105,20173
+5001800US0602,"Congressional District 2 (118th Congress), California",37572,23817,13755,21093,16479
+5001800US0603,"Congressional District 3 (118th Congress), California",22109,14458,7651,12753,9356
+5001800US0604,"Congressional District 4 (118th Congress), California",35505,22066,13439,19539,15966
+5001800US0605,"Congressional District 5 (118th Congress), California",32331,16900,15431,18593,13738
+5001800US0606,"Congressional District 6 (118th Congress), California",45910,23960,21950,26943,18967
+5001800US0607,"Congressional District 7 (118th Congress), California",40067,20997,19070,21873,18194
+5001800US0608,"Congressional District 8 (118th Congress), California",35220,20007,15213,16920,18300
+5001800US0609,"Congressional District 9 (118th Congress), California",34798,14987,19811,20611,14187
+5001800US0610,"Congressional District 10 (118th Congress), California",17739,9579,8160,9415,8324
+5001800US0611,"Congressional District 11 (118th Congress), California",38218,30322,7896,16866,21352
+5001800US0612,"Congressional District 12 (118th Congress), California",44561,31629,12932,25111,19450
+5001800US0613,"Congressional District 13 (118th Congress), California",47708,20176,27532,31327,16381
+5001800US0614,"Congressional District 14 (118th Congress), California",21192,10271,10921,10803,10389
+5001800US0615,"Congressional District 15 (118th Congress), California",20152,11739,8413,9045,11107
+5001800US0616,"Congressional District 16 (118th Congress), California",13924,8579,5345,5745,8179
+5001800US0617,"Congressional District 17 (118th Congress), California",16551,11268,5283,7269,9282
+5001800US0618,"Congressional District 18 (118th Congress), California",29897,14202,15695,16899,12998
+5001800US0619,"Congressional District 19 (118th Congress), California",20829,12823,8006,10575,10254
+5001800US0620,"Congressional District 20 (118th Congress), California",43912,20153,23759,29221,14691
+5001800US0621,"Congressional District 21 (118th Congress), California",67587,26984,40603,44488,23099
+5001800US0622,"Congressional District 22 (118th Congress), California",60580,25114,35466,39632,20948
+5001800US0623,"Congressional District 23 (118th Congress), California",49769,25666,24103,29154,20615
+5001800US0624,"Congressional District 24 (118th Congress), California",28958,17578,11380,17390,11568
+5001800US0625,"Congressional District 25 (118th Congress), California",55925,24775,31150,33128,22797
+5001800US0626,"Congressional District 26 (118th Congress), California",20653,8301,12352,10787,9866
+5001800US0627,"Congressional District 27 (118th Congress), California",35250,17214,18036,18714,16536
+5001800US0628,"Congressional District 28 (118th Congress), California",27880,17777,10103,11668,16212
+5001800US0629,"Congressional District 29 (118th Congress), California",46463,25341,21122,25988,20475
+5001800US0630,"Congressional District 30 (118th Congress), California",51094,39836,11258,20990,30104
+5001800US0631,"Congressional District 31 (118th Congress), California",37040,18562,18478,18278,18762
+5001800US0632,"Congressional District 32 (118th Congress), California",29069,19137,9932,15156,13913
+5001800US0633,"Congressional District 33 (118th Congress), California",38260,16283,21977,21782,16478
+5001800US0634,"Congressional District 34 (118th Congress), California",61624,40819,20805,29852,31772
+5001800US0635,"Congressional District 35 (118th Congress), California",35309,15704,19605,21931,13378
+5001800US0636,"Congressional District 36 (118th Congress), California",20323,15703,4620,9265,11058
+5001800US0637,"Congressional District 37 (118th Congress), California",58079,35358,22721,33822,24257
+5001800US0638,"Congressional District 38 (118th Congress), California",28464,15394,13070,14812,13652
+5001800US0639,"Congressional District 39 (118th Congress), California",35151,14771,20380,20407,14744
+5001800US0640,"Congressional District 40 (118th Congress), California",14993,9770,5223,6841,8152
+5001800US0641,"Congressional District 41 (118th Congress), California",30709,15506,15203,15700,15009
+5001800US0642,"Congressional District 42 (118th Congress), California",41219,22921,18298,21677,19542
+5001800US0643,"Congressional District 43 (118th Congress), California",49468,26089,23379,26941,22527
+5001800US0644,"Congressional District 44 (118th Congress), California",44773,22525,22248,24494,20279
+5001800US0645,"Congressional District 45 (118th Congress), California",29268,16353,12915,12602,16666
+5001800US0646,"Congressional District 46 (118th Congress), California",32720,18239,14481,15143,17577
+5001800US0647,"Congressional District 47 (118th Congress), California",18959,12517,6442,10456,8503
+5001800US0648,"Congressional District 48 (118th Congress), California",22076,10343,11733,12112,9964
+5001800US0649,"Congressional District 49 (118th Congress), California",16983,11163,5820,8368,8615
+5001800US0650,"Congressional District 50 (118th Congress), California",24364,15585,8779,14609,9755
+5001800US0651,"Congressional District 51 (118th Congress), California",34130,19525,14605,20394,13736
+5001800US0652,"Congressional District 52 (118th Congress), California",38733,19971,18762,20255,18478
+5001800US0801,"Congressional District 1 (118th Congress), Colorado",31738,21068,10670,18211,13527
+5001800US0802,"Congressional District 2 (118th Congress), Colorado",17808,11287,6521,10999,6809
+5001800US0803,"Congressional District 3 (118th Congress), Colorado",45367,27644,17723,26003,19364
+5001800US0804,"Congressional District 4 (118th Congress), Colorado",20428,10951,9477,11743,8685
+5001800US0805,"Congressional District 5 (118th Congress), Colorado",26624,12890,13734,18041,8583
+5001800US0806,"Congressional District 6 (118th Congress), Colorado",25501,11776,13725,17620,7881
+5001800US0807,"Congressional District 7 (118th Congress), Colorado",21641,12628,9013,12737,8904
+5001800US0808,"Congressional District 8 (118th Congress), Colorado",29494,12945,16549,18695,10799
+5001800US0901,"Congressional District 1 (118th Congress), Connecticut",40993,24120,16873,23464,17529
+5001800US0902,"Congressional District 2 (118th Congress), Connecticut",28150,17185,10965,16722,11428
+5001800US0903,"Congressional District 3 (118th Congress), Connecticut",37671,24059,13612,19425,18246
+5001800US0904,"Congressional District 4 (118th Congress), Connecticut",27705,19460,8245,11089,16616
+5001800US0905,"Congressional District 5 (118th Congress), Connecticut",37765,22232,15533,22207,15558
+5001800US1000,"Congressional District (at Large) (118th Congress), Delaware",47228,24742,22486,25466,21762
+5001800US1201,"Congressional District 1 (118th Congress), Florida",28804,14255,14549,17128,11676
+5001800US1202,"Congressional District 2 (118th Congress), Florida",40853,23514,17339,25206,15647
+5001800US1203,"Congressional District 3 (118th Congress), Florida",39137,22504,16633,23344,15793
+5001800US1204,"Congressional District 4 (118th Congress), Florida",46325,22298,24027,29563,16762
+5001800US1205,"Congressional District 5 (118th Congress), Florida",26980,12595,14385,15318,11662
+5001800US1206,"Congressional District 6 (118th Congress), Florida",44202,23967,20235,24282,19920
+5001800US1207,"Congressional District 7 (118th Congress), Florida",30326,16277,14049,17062,13264
+5001800US1208,"Congressional District 8 (118th Congress), Florida",27096,13131,13965,15303,11793
+5001800US1209,"Congressional District 9 (118th Congress), Florida",45005,22481,22524,22897,22108
+5001800US1210,"Congressional District 10 (118th Congress), Florida",51358,28035,23323,29988,21370
+5001800US1211,"Congressional District 11 (118th Congress), Florida",24997,12591,12406,14053,10944
+5001800US1212,"Congressional District 12 (118th Congress), Florida",34496,21155,13341,16326,18170
+5001800US1213,"Congressional District 13 (118th Congress), Florida",29738,17078,12660,14553,15185
+5001800US1214,"Congressional District 14 (118th Congress), Florida",50054,29831,20223,26274,23780
+5001800US1215,"Congressional District 15 (118th Congress), Florida",41844,20813,21031,24208,17636
+5001800US1216,"Congressional District 16 (118th Congress), Florida",24029,12966,11063,11137,12892
+5001800US1217,"Congressional District 17 (118th Congress), Florida",24667,13807,10860,12809,11858
+5001800US1218,"Congressional District 18 (118th Congress), Florida",51276,26037,25239,27621,23655
+5001800US1219,"Congressional District 19 (118th Congress), Florida",20721,11527,9194,10756,9965
+5001800US1220,"Congressional District 20 (118th Congress), Florida",50958,27016,23942,24808,26150
+5001800US1221,"Congressional District 21 (118th Congress), Florida",26497,15489,11008,12994,13503
+5001800US1222,"Congressional District 22 (118th Congress), Florida",32759,18455,14304,15781,16978
+5001800US1223,"Congressional District 23 (118th Congress), Florida",19142,11496,7646,7543,11599
+5001800US1224,"Congressional District 24 (118th Congress), Florida",61981,34946,27035,26531,35450
+5001800US1225,"Congressional District 25 (118th Congress), Florida",32715,21385,11330,12962,19753
+5001800US1226,"Congressional District 26 (118th Congress), Florida",63076,39769,23307,22938,40138
+5001800US1227,"Congressional District 27 (118th Congress), Florida",51048,35160,15888,15925,35123
+5001800US1228,"Congressional District 28 (118th Congress), Florida",46046,25372,20674,16707,29339
+5001800US1301,"Congressional District 1 (118th Congress), Georgia",43424,22066,21358,26798,16626
+5001800US1302,"Congressional District 2 (118th Congress), Georgia",67385,35862,31523,40116,27269
+5001800US1303,"Congressional District 3 (118th Congress), Georgia",36060,18152,17908,20797,15263
+5001800US1304,"Congressional District 4 (118th Congress), Georgia",35985,17920,18065,20475,15510
+5001800US1305,"Congressional District 5 (118th Congress), Georgia",47780,32917,14863,22897,24883
+5001800US1306,"Congressional District 6 (118th Congress), Georgia",8985,3848,5137,5015,3970
+5001800US1307,"Congressional District 7 (118th Congress), Georgia",21971,7632,14339,14689,7282
+5001800US1308,"Congressional District 8 (118th Congress), Georgia",51587,24579,27008,32460,19127
+5001800US1309,"Congressional District 9 (118th Congress), Georgia",28611,15291,13320,13791,14820
+5001800US1310,"Congressional District 10 (118th Congress), Georgia",31026,14834,16192,19268,11758
+5001800US1311,"Congressional District 11 (118th Congress), Georgia",17912,8081,9831,11464,6448
+5001800US1312,"Congressional District 12 (118th Congress), Georgia",49192,24074,25118,31577,17615
+5001800US1313,"Congressional District 13 (118th Congress), Georgia",35969,17309,18660,23577,12392
+5001800US1314,"Congressional District 14 (118th Congress), Georgia",38013,19362,18651,22775,15238
+5001800US1501,"Congressional District 1 (118th Congress), Hawaii",25463,13455,12008,11893,13570
+5001800US1502,"Congressional District 2 (118th Congress), Hawaii",28735,14780,13955,13529,15206
+5001800US1601,"Congressional District 1 (118th Congress), Idaho",20368,9485,10883,12529,7839
+5001800US1602,"Congressional District 2 (118th Congress), Idaho",30718,15656,15062,21619,9099
+5001800US1701,"Congressional District 1 (118th Congress), Illinois",75492,47669,27823,42610,32882
+5001800US1702,"Congressional District 2 (118th Congress), Illinois",70127,36965,33162,43780,26347
+5001800US1703,"Congressional District 3 (118th Congress), Illinois",37293,16827,20466,22839,14454
+5001800US1704,"Congressional District 4 (118th Congress), Illinois",43328,21151,22177,26526,16802
+5001800US1705,"Congressional District 5 (118th Congress), Illinois",18035,11241,6794,9824,8211
+5001800US1706,"Congressional District 6 (118th Congress), Illinois",25157,13775,11382,13892,11265
+5001800US1707,"Congressional District 7 (118th Congress), Illinois",74207,49989,24218,41767,32440
+5001800US1708,"Congressional District 8 (118th Congress), Illinois",24440,12430,12010,13118,11322
+5001800US1709,"Congressional District 9 (118th Congress), Illinois",31397,19222,12175,16555,14842
+5001800US1710,"Congressional District 10 (118th Congress), Illinois",21400,12623,8777,11399,10001
+5001800US1711,"Congressional District 11 (118th Congress), Illinois",23614,11143,12471,15917,7697
+5001800US1712,"Congressional District 12 (118th Congress), Illinois",50371,32191,18180,29297,21074
+5001800US1713,"Congressional District 13 (118th Congress), Illinois",56472,35531,20941,35055,21417
+5001800US1714,"Congressional District 14 (118th Congress), Illinois",34048,16099,17949,22299,11749
+5001800US1715,"Congressional District 15 (118th Congress), Illinois",38568,21602,16966,23909,14659
+5001800US1716,"Congressional District 16 (118th Congress), Illinois",29012,14968,14044,18664,10348
+5001800US1717,"Congressional District 17 (118th Congress), Illinois",64145,38645,25500,42339,21806
+5001800US1801,"Congressional District 1 (118th Congress), Indiana",30918,15209,15709,21425,9493
+5001800US1802,"Congressional District 2 (118th Congress), Indiana",22430,11331,11099,16337,6093
+5001800US1803,"Congressional District 3 (118th Congress), Indiana",24335,12741,11594,17627,6708
+5001800US1804,"Congressional District 4 (118th Congress), Indiana",20129,10904,9225,13203,6926
+5001800US1805,"Congressional District 5 (118th Congress), Indiana",27943,14290,13653,17872,10071
+5001800US1806,"Congressional District 6 (118th Congress), Indiana",28377,13088,15289,18987,9390
+5001800US1807,"Congressional District 7 (118th Congress), Indiana",34418,20353,14065,22653,11765
+5001800US1808,"Congressional District 8 (118th Congress), Indiana",29683,15650,14033,19496,10187
+5001800US1809,"Congressional District 9 (118th Congress), Indiana",20252,11557,8695,11738,8514
+5001800US1901,"Congressional District 1 (118th Congress), Iowa",28793,15018,13775,20329,8464
+5001800US1902,"Congressional District 2 (118th Congress), Iowa",29942,17474,12468,19948,9994
+5001800US1903,"Congressional District 3 (118th Congress), Iowa",31100,16262,14838,21942,9158
+5001800US1904,"Congressional District 4 (118th Congress), Iowa",26872,14660,12212,16510,10362
+5001800US2001,"Congressional District 1 (118th Congress), Kansas",18101,9512,8589,12406,5695
+5001800US2002,"Congressional District 2 (118th Congress), Kansas",28018,15737,12281,18440,9578
+5001800US2003,"Congressional District 3 (118th Congress), Kansas",8130,3927,4203,5623,2507
+5001800US2004,"Congressional District 4 (118th Congress), Kansas",26552,12850,13702,18587,7965
+5001800US2101,"Congressional District 1 (118th Congress), Kentucky",40555,20890,19665,27367,13188
+5001800US2102,"Congressional District 2 (118th Congress), Kentucky",34899,15254,19645,24592,10307
+5001800US2103,"Congressional District 3 (118th Congress), Kentucky",38069,18198,19871,26090,11979
+5001800US2104,"Congressional District 4 (118th Congress), Kentucky",28056,12472,15584,17109,10947
+5001800US2105,"Congressional District 5 (118th Congress), Kentucky",68468,37850,30618,43284,25184
+5001800US2106,"Congressional District 6 (118th Congress), Kentucky",32358,14887,17471,21820,10538
+5001800US2201,"Congressional District 1 (118th Congress), Louisiana",31251,14992,16259,19781,11470
+5001800US2202,"Congressional District 2 (118th Congress), Louisiana",63619,35780,27839,35347,28272
+5001800US2203,"Congressional District 3 (118th Congress), Louisiana",53099,24612,28487,35023,18076
+5001800US2204,"Congressional District 4 (118th Congress), Louisiana",61630,33020,28610,40886,20744
+5001800US2205,"Congressional District 5 (118th Congress), Louisiana",70838,38558,32280,46921,23917
+5001800US2206,"Congressional District 6 (118th Congress), Louisiana",39280,17337,21943,29692,9588
+5001800US2301,"Congressional District 1 (118th Congress), Maine",25082,17118,7964,14510,10572
+5001800US2302,"Congressional District 2 (118th Congress), Maine",52334,35129,17205,31103,21231
+5001800US2401,"Congressional District 1 (118th Congress), Maryland",34114,18827,15287,19379,14735
+5001800US2402,"Congressional District 2 (118th Congress), Maryland",20370,12247,8123,10977,9393
+5001800US2403,"Congressional District 3 (118th Congress), Maryland",21342,11724,9618,12216,9126
+5001800US2404,"Congressional District 4 (118th Congress), Maryland",33415,15447,17968,20386,13029
+5001800US2405,"Congressional District 5 (118th Congress), Maryland",20763,10959,9804,8378,12385
+5001800US2406,"Congressional District 6 (118th Congress), Maryland",30143,15248,14895,16287,13856
+5001800US2407,"Congressional District 7 (118th Congress), Maryland",69290,44518,24772,40401,28889
+5001800US2408,"Congressional District 8 (118th Congress), Maryland",17936,9047,8889,9135,8801
+5001800US2501,"Congressional District 1 (118th Congress), Massachusetts",73919,45467,28452,42826,31093
+5001800US2502,"Congressional District 2 (118th Congress), Massachusetts",48389,29540,18849,27216,21173
+5001800US2503,"Congressional District 3 (118th Congress), Massachusetts",54632,33056,21576,29383,25249
+5001800US2504,"Congressional District 4 (118th Congress), Massachusetts",43055,24923,18132,26506,16549
+5001800US2505,"Congressional District 5 (118th Congress), Massachusetts",28071,18365,9706,14025,14046
+5001800US2506,"Congressional District 6 (118th Congress), Massachusetts",33224,21976,11248,16442,16782
+5001800US2507,"Congressional District 7 (118th Congress), Massachusetts",68907,43841,25066,37918,30989
+5001800US2508,"Congressional District 8 (118th Congress), Massachusetts",44866,30875,13991,22743,22123
+5001800US2509,"Congressional District 9 (118th Congress), Massachusetts",44230,26421,17809,24933,19297
+5001800US2601,"Congressional District 1 (118th Congress), Michigan",42670,27480,15190,25484,17186
+5001800US2602,"Congressional District 2 (118th Congress), Michigan",45719,27508,18211,27649,18070
+5001800US2603,"Congressional District 3 (118th Congress), Michigan",37959,21339,16620,24407,13552
+5001800US2604,"Congressional District 4 (118th Congress), Michigan",34398,19906,14492,22392,12006
+5001800US2605,"Congressional District 5 (118th Congress), Michigan",38710,21541,17169,24313,14397
+5001800US2606,"Congressional District 6 (118th Congress), Michigan",23734,14130,9604,14360,9374
+5001800US2607,"Congressional District 7 (118th Congress), Michigan",30044,19942,10102,18184,11860
+5001800US2608,"Congressional District 8 (118th Congress), Michigan",59113,36034,23079,37047,22066
+5001800US2609,"Congressional District 9 (118th Congress), Michigan",31175,17991,13184,19554,11621
+5001800US2610,"Congressional District 10 (118th Congress), Michigan",43943,24955,18988,25007,18936
+5001800US2611,"Congressional District 11 (118th Congress), Michigan",30477,17529,12948,17682,12795
+5001800US2612,"Congressional District 12 (118th Congress), Michigan",67938,42183,25755,39545,28393
+5001800US2613,"Congressional District 13 (118th Congress), Michigan",88860,52757,36103,56415,32445
+5001800US2701,"Congressional District 1 (118th Congress), Minnesota",25041,14480,10561,14954,10087
+5001800US2702,"Congressional District 2 (118th Congress), Minnesota",13961,8781,5180,8686,5275
+5001800US2703,"Congressional District 3 (118th Congress), Minnesota",15302,8706,6596,10844,4458
+5001800US2704,"Congressional District 4 (118th Congress), Minnesota",28290,13981,14309,17216,11074
+5001800US2705,"Congressional District 5 (118th Congress), Minnesota",31728,20415,11313,19648,12080
+5001800US2706,"Congressional District 6 (118th Congress), Minnesota",16779,7444,9335,10376,6403
+5001800US2707,"Congressional District 7 (118th Congress), Minnesota",27112,15519,11593,18983,8129
+5001800US2708,"Congressional District 8 (118th Congress), Minnesota",28024,16941,11083,17871,10153
+5001800US2801,"Congressional District 1 (118th Congress), Mississippi",28288,13445,14843,18189,10099
+5001800US2802,"Congressional District 2 (118th Congress), Mississippi",54481,30685,23796,34098,20383
+5001800US2803,"Congressional District 3 (118th Congress), Mississippi",33854,17597,16257,22958,10896
+5001800US2804,"Congressional District 4 (118th Congress), Mississippi",34319,16746,17573,20696,13623
+5001800US2901,"Congressional District 1 (118th Congress), Missouri",48756,27781,20975,29711,19045
+5001800US2902,"Congressional District 2 (118th Congress), Missouri",10446,5533,4913,6995,3451
+5001800US2903,"Congressional District 3 (118th Congress), Missouri",20005,10852,9153,12367,7638
+5001800US2904,"Congressional District 4 (118th Congress), Missouri",31484,17758,13726,20192,11292
+5001800US2905,"Congressional District 5 (118th Congress), Missouri",33004,17682,15322,23045,9959
+5001800US2906,"Congressional District 6 (118th Congress), Missouri",23321,12699,10622,14101,9220
+5001800US2907,"Congressional District 7 (118th Congress), Missouri",37718,20245,17473,26323,11395
+5001800US2908,"Congressional District 8 (118th Congress), Missouri",41373,23976,17397,25283,16090
+5001800US3001,"Congressional District 1 (118th Congress), Montana",16770,9734,7036,10438,6332
+5001800US3002,"Congressional District 2 (118th Congress), Montana",18688,10858,7830,11391,7297
+5001800US3101,"Congressional District 1 (118th Congress), Nebraska",18722,10623,8099,12904,5818
+5001800US3102,"Congressional District 2 (118th Congress), Nebraska",23383,11454,11929,15992,7391
+5001800US3103,"Congressional District 3 (118th Congress), Nebraska",21186,11149,10037,14394,6792
+5001800US3201,"Congressional District 1 (118th Congress), Nevada",52863,28307,24556,33093,19770
+5001800US3202,"Congressional District 2 (118th Congress), Nevada",29014,16264,12750,16965,12049
+5001800US3203,"Congressional District 3 (118th Congress), Nevada",30826,15435,15391,18148,12678
+5001800US3204,"Congressional District 4 (118th Congress), Nevada",47270,19402,27868,29727,17543
+5001800US3301,"Congressional District 1 (118th Congress), New Hampshire",18500,8734,9766,11426,7074
+5001800US3302,"Congressional District 2 (118th Congress), New Hampshire",17416,10594,6822,9144,8272
+5001800US3401,"Congressional District 1 (118th Congress), New Jersey",36187,19760,16427,22565,13622
+5001800US3402,"Congressional District 2 (118th Congress), New Jersey",37038,20431,16607,21606,15432
+5001800US3403,"Congressional District 3 (118th Congress), New Jersey",15545,8222,7323,7471,8074
+5001800US3404,"Congressional District 4 (118th Congress), New Jersey",18823,8430,10393,9844,8979
+5001800US3405,"Congressional District 5 (118th Congress), New Jersey",12643,9175,3468,4820,7823
+5001800US3406,"Congressional District 6 (118th Congress), New Jersey",26318,14747,11571,12475,13843
+5001800US3407,"Congressional District 7 (118th Congress), New Jersey",10831,5742,5089,6082,4749
+5001800US3408,"Congressional District 8 (118th Congress), New Jersey",47475,26375,21100,24912,22563
+5001800US3409,"Congressional District 9 (118th Congress), New Jersey",44865,21283,23582,23217,21648
+5001800US3410,"Congressional District 10 (118th Congress), New Jersey",57312,29894,27418,32884,24428
+5001800US3411,"Congressional District 11 (118th Congress), New Jersey",12182,8394,3788,6170,6012
+5001800US3412,"Congressional District 12 (118th Congress), New Jersey",22942,12583,10359,12177,10765
+5001800US3501,"Congressional District 1 (118th Congress), New Mexico",48874,29444,19430,29873,19001
+5001800US3502,"Congressional District 2 (118th Congress), New Mexico",67323,34146,33177,40925,26398
+5001800US3503,"Congressional District 3 (118th Congress), New Mexico",55080,26106,28974,35198,19882
+5001800US3601,"Congressional District 1 (118th Congress), New York",17888,11752,6136,6737,11151
+5001800US3602,"Congressional District 2 (118th Congress), New York",25389,14781,10608,10475,14914
+5001800US3603,"Congressional District 3 (118th Congress), New York",18127,11865,6262,5468,12659
+5001800US3604,"Congressional District 4 (118th Congress), New York",15565,10101,5464,6172,9393
+5001800US3605,"Congressional District 5 (118th Congress), New York",53011,30306,22705,22540,30471
+5001800US3606,"Congressional District 6 (118th Congress), New York",47296,30082,17214,18014,29282
+5001800US3607,"Congressional District 7 (118th Congress), New York",60975,41891,19084,27577,33398
+5001800US3608,"Congressional District 8 (118th Congress), New York",91827,56388,35439,42723,49104
+5001800US3609,"Congressional District 9 (118th Congress), New York",60804,39390,21414,28695,32109
+5001800US3610,"Congressional District 10 (118th Congress), New York",46519,34534,11985,16080,30439
+5001800US3611,"Congressional District 11 (118th Congress), New York",44513,25418,19095,19001,25512
+5001800US3612,"Congressional District 12 (118th Congress), New York",19777,17141,2636,6467,13310
+5001800US3613,"Congressional District 13 (118th Congress), New York",104754,71609,33145,50636,54118
+5001800US3614,"Congressional District 14 (118th Congress), New York",76727,43784,32943,39173,37554
+5001800US3615,"Congressional District 15 (118th Congress), New York",124749,74211,50538,72121,52628
+5001800US3616,"Congressional District 16 (118th Congress), New York",35730,20437,15293,19771,15959
+5001800US3617,"Congressional District 17 (118th Congress), New York",18264,10209,8055,10494,7770
+5001800US3618,"Congressional District 18 (118th Congress), New York",32532,19025,13507,16477,16055
+5001800US3619,"Congressional District 19 (118th Congress), New York",42553,27218,15335,23787,18766
+5001800US3620,"Congressional District 20 (118th Congress), New York",35618,21907,13711,21298,14320
+5001800US3621,"Congressional District 21 (118th Congress), New York",42889,28700,14189,23270,19619
+5001800US3622,"Congressional District 22 (118th Congress), New York",48927,29465,19462,29568,19359
+5001800US3623,"Congressional District 23 (118th Congress), New York",44589,27387,17202,26216,18373
+5001800US3624,"Congressional District 24 (118th Congress), New York",41123,26355,14768,22840,18283
+5001800US3625,"Congressional District 25 (118th Congress), New York",51737,33109,18628,31800,19937
+5001800US3626,"Congressional District 26 (118th Congress), New York",65249,41636,23613,37603,27646
+5001800US3701,"Congressional District 1 (118th Congress), North Carolina",61837,36730,25107,37671,24166
+5001800US3702,"Congressional District 2 (118th Congress), North Carolina",17591,9423,8168,11114,6477
+5001800US3703,"Congressional District 3 (118th Congress), North Carolina",48791,24912,23879,29680,19111
+5001800US3704,"Congressional District 4 (118th Congress), North Carolina",26796,13460,13336,16477,10319
+5001800US3705,"Congressional District 5 (118th Congress), North Carolina",41846,23105,18741,23551,18295
+5001800US3706,"Congressional District 6 (118th Congress), North Carolina",48147,23684,24463,30616,17531
+5001800US3707,"Congressional District 7 (118th Congress), North Carolina",50230,26448,23782,30732,19498
+5001800US3708,"Congressional District 8 (118th Congress), North Carolina",40218,20352,19866,23884,16334
+5001800US3709,"Congressional District 9 (118th Congress), North Carolina",47243,21465,25778,31651,15592
+5001800US3710,"Congressional District 10 (118th Congress), North Carolina",39389,19725,19664,23019,16370
+5001800US3711,"Congressional District 11 (118th Congress), North Carolina",39144,24155,14989,23452,15692
+5001800US3712,"Congressional District 12 (118th Congress), North Carolina",34245,17037,17208,21193,13052
+5001800US3713,"Congressional District 13 (118th Congress), North Carolina",28698,12437,16261,18755,9943
+5001800US3714,"Congressional District 14 (118th Congress), North Carolina",29132,14002,15130,17763,11369
+5001800US3800,"Congressional District (at Large) (118th Congress), North Dakota",24012,14391,9621,16894,7118
+5001800US3901,"Congressional District 1 (118th Congress), Ohio",41016,26737,14279,22813,18203
+5001800US3902,"Congressional District 2 (118th Congress), Ohio",44366,25611,18755,24092,20274
+5001800US3903,"Congressional District 3 (118th Congress), Ohio",33971,17844,16127,20135,13836
+5001800US3904,"Congressional District 4 (118th Congress), Ohio",33441,18798,14643,20620,12821
+5001800US3905,"Congressional District 5 (118th Congress), Ohio",31766,17837,13929,19094,12672
+5001800US3906,"Congressional District 6 (118th Congress), Ohio",51844,33005,18839,31662,20182
+5001800US3907,"Congressional District 7 (118th Congress), Ohio",22159,12624,9535,13394,8765
+5001800US3908,"Congressional District 8 (118th Congress), Ohio",29989,15473,14516,18154,11835
+5001800US3909,"Congressional District 9 (118th Congress), Ohio",45281,25301,19980,28753,16528
+5001800US3910,"Congressional District 10 (118th Congress), Ohio",43450,24858,18592,26175,17275
+5001800US3911,"Congressional District 11 (118th Congress), Ohio",75389,46015,29374,43542,31847
+5001800US3912,"Congressional District 12 (118th Congress), Ohio",38988,22838,16150,21757,17231
+5001800US3913,"Congressional District 13 (118th Congress), Ohio",45546,25204,20342,28302,17244
+5001800US3914,"Congressional District 14 (118th Congress), Ohio",36945,22289,14656,22182,14763
+5001800US3915,"Congressional District 15 (118th Congress), Ohio",37469,18372,19097,25004,12465
+5001800US4001,"Congressional District 1 (118th Congress), Oklahoma",43495,22041,21454,30625,12870
+5001800US4002,"Congressional District 2 (118th Congress), Oklahoma",59132,31224,27908,38584,20548
+5001800US4003,"Congressional District 3 (118th Congress), Oklahoma",50917,24864,26053,33900,17017
+5001800US4004,"Congressional District 4 (118th Congress), Oklahoma",46107,23129,22978,30726,15381
+5001800US4005,"Congressional District 5 (118th Congress), Oklahoma",39658,21710,17948,26707,12951
+5001800US4101,"Congressional District 1 (118th Congress), Oregon",41401,27311,14090,27273,14128
+5001800US4102,"Congressional District 2 (118th Congress), Oregon",62796,34816,27980,37446,25350
+5001800US4103,"Congressional District 3 (118th Congress), Oregon",48552,32346,16206,31865,16687
+5001800US4104,"Congressional District 4 (118th Congress), Oregon",59575,37590,21985,35518,24057
+5001800US4105,"Congressional District 5 (118th Congress), Oregon",35682,21181,14501,20389,15293
+5001800US4106,"Congressional District 6 (118th Congress), Oregon",45918,26644,19274,27209,18709
+5001800US4201,"Congressional District 1 (118th Congress), Pennsylvania",24638,14171,10467,12954,11684
+5001800US4202,"Congressional District 2 (118th Congress), Pennsylvania",93139,53638,39501,53186,39953
+5001800US4203,"Congressional District 3 (118th Congress), Pennsylvania",80722,54940,25782,42617,38105
+5001800US4204,"Congressional District 4 (118th Congress), Pennsylvania",24589,12433,12156,13559,11030
+5001800US4205,"Congressional District 5 (118th Congress), Pennsylvania",38898,20395,18503,21695,17203
+5001800US4206,"Congressional District 6 (118th Congress), Pennsylvania",29281,14900,14381,17749,11532
+5001800US4207,"Congressional District 7 (118th Congress), Pennsylvania",40011,20541,19470,25128,14883
+5001800US4208,"Congressional District 8 (118th Congress), Pennsylvania",58869,33180,25689,31191,27678
+5001800US4209,"Congressional District 9 (118th Congress), Pennsylvania",44197,26006,18191,25357,18840
+5001800US4210,"Congressional District 10 (118th Congress), Pennsylvania",38134,20081,18053,24718,13416
+5001800US4211,"Congressional District 11 (118th Congress), Pennsylvania",32791,19044,13747,18207,14584
+5001800US4212,"Congressional District 12 (118th Congress), Pennsylvania",49205,27857,21348,31612,17593
+5001800US4213,"Congressional District 13 (118th Congress), Pennsylvania",47296,30717,16579,25703,21593
+5001800US4214,"Congressional District 14 (118th Congress), Pennsylvania",58108,37144,20964,32912,25196
+5001800US4215,"Congressional District 15 (118th Congress), Pennsylvania",46442,28644,17798,28308,18134
+5001800US4216,"Congressional District 16 (118th Congress), Pennsylvania",54353,34060,20293,32869,21484
+5001800US4217,"Congressional District 17 (118th Congress), Pennsylvania",34817,21569,13248,20408,14409
+5001800US4401,"Congressional District 1 (118th Congress), Rhode Island",34112,21509,12603,16727,17385
+5001800US4402,"Congressional District 2 (118th Congress), Rhode Island",24233,15501,8732,12552,11681
+5001800US4501,"Congressional District 1 (118th Congress), South Carolina",18156,8708,9448,10796,7360
+5001800US4502,"Congressional District 2 (118th Congress), South Carolina",30368,13907,16461,18142,12226
+5001800US4503,"Congressional District 3 (118th Congress), South Carolina",34938,16780,18158,20278,14660
+5001800US4504,"Congressional District 4 (118th Congress), South Carolina",26526,11795,14731,15756,10770
+5001800US4505,"Congressional District 5 (118th Congress), South Carolina",32422,17223,15199,18724,13698
+5001800US4506,"Congressional District 6 (118th Congress), South Carolina",50594,27916,22678,29975,20619
+5001800US4507,"Congressional District 7 (118th Congress), South Carolina",40649,18826,21823,23664,16985
+5001800US4600,"Congressional District (at Large) (118th Congress), South Dakota",28499,15408,13091,18557,9942
+5001800US4701,"Congressional District 1 (118th Congress), Tennessee",35556,20579,14977,20581,14975
+5001800US4702,"Congressional District 2 (118th Congress), Tennessee",25276,15477,9799,16165,9111
+5001800US4703,"Congressional District 3 (118th Congress), Tennessee",33719,18389,15330,20791,12928
+5001800US4704,"Congressional District 4 (118th Congress), Tennessee",29232,14780,14452,19038,10194
+5001800US4705,"Congressional District 5 (118th Congress), Tennessee",14693,7397,7296,9621,5072
+5001800US4706,"Congressional District 6 (118th Congress), Tennessee",28659,16023,12636,17826,10833
+5001800US4707,"Congressional District 7 (118th Congress), Tennessee",27782,14699,13083,18236,9546
+5001800US4708,"Congressional District 8 (118th Congress), Tennessee",36406,19394,17012,23476,12930
+5001800US4709,"Congressional District 9 (118th Congress), Tennessee",54198,23877,30321,38080,16118
+5001800US4801,"Congressional District 1 (118th Congress), Texas",38322,17032,21290,26193,12129
+5001800US4802,"Congressional District 2 (118th Congress), Texas",20812,4533,16279,15173,5639
+5001800US4803,"Congressional District 3 (118th Congress), Texas",13021,3926,9095,8736,4285
+5001800US4804,"Congressional District 4 (118th Congress), Texas",17227,7668,9559,11237,5990
+5001800US4805,"Congressional District 5 (118th Congress), Texas",29705,11107,18598,19779,9926
+5001800US4806,"Congressional District 6 (118th Congress), Texas",23803,8865,14938,14592,9211
+5001800US4807,"Congressional District 7 (118th Congress), Texas",35219,16503,18716,23033,12186
+5001800US4808,"Congressional District 8 (118th Congress), Texas",27825,8834,18991,18856,8969
+5001800US4809,"Congressional District 9 (118th Congress), Texas",46454,18837,27617,28605,17849
+5001800US4810,"Congressional District 10 (118th Congress), Texas",25841,10120,15721,17483,8358
+5001800US4811,"Congressional District 11 (118th Congress), Texas",33250,15885,17365,23039,10211
+5001800US4812,"Congressional District 12 (118th Congress), Texas",29524,10625,18899,20515,9009
+5001800US4813,"Congressional District 13 (118th Congress), Texas",31148,16303,14845,19286,11862
+5001800US4814,"Congressional District 14 (118th Congress), Texas",36229,15880,20349,24872,11357
+5001800US4815,"Congressional District 15 (118th Congress), Texas",57254,22102,35152,35197,22057
+5001800US4816,"Congressional District 16 (118th Congress), Texas",51200,26397,24803,29347,21853
+5001800US4817,"Congressional District 17 (118th Congress), Texas",37844,16496,21348,24497,13347
+5001800US4818,"Congressional District 18 (118th Congress), Texas",55036,23243,31793,36567,18469
+5001800US4819,"Congressional District 19 (118th Congress), Texas",36529,16807,19722,25173,11356
+5001800US4820,"Congressional District 20 (118th Congress), Texas",45200,19236,25964,28205,16995
+5001800US4821,"Congressional District 21 (118th Congress), Texas",14718,7574,7144,7977,6741
+5001800US4822,"Congressional District 22 (118th Congress), Texas",23890,11289,12601,13658,10232
+5001800US4823,"Congressional District 23 (118th Congress), Texas",34380,14925,19455,19365,15015
+5001800US4824,"Congressional District 24 (118th Congress), Texas",11332,3483,7849,7119,4213
+5001800US4825,"Congressional District 25 (118th Congress), Texas",25190,9880,15310,16439,8751
+5001800US4826,"Congressional District 26 (118th Congress), Texas",13122,4802,8320,6925,6197
+5001800US4827,"Congressional District 27 (118th Congress), Texas",39945,19918,20027,24526,15419
+5001800US4828,"Congressional District 28 (118th Congress), Texas",53939,21223,32716,32161,21778
+5001800US4829,"Congressional District 29 (118th Congress), Texas",54139,19013,35126,35387,18752
+5001800US4830,"Congressional District 30 (118th Congress), Texas",39824,18686,21138,25189,14635
+5001800US4831,"Congressional District 31 (118th Congress), Texas",21780,8979,12801,13538,8242
+5001800US4832,"Congressional District 32 (118th Congress), Texas",28613,14996,13617,17543,11070
+5001800US4833,"Congressional District 33 (118th Congress), Texas",35712,17597,18115,20751,14961
+5001800US4834,"Congressional District 34 (118th Congress), Texas",65313,24834,40479,41590,23723
+5001800US4835,"Congressional District 35 (118th Congress), Texas",42052,19820,22232,27192,14860
+5001800US4836,"Congressional District 36 (118th Congress), Texas",37555,15584,21971,25469,12086
+5001800US4837,"Congressional District 37 (118th Congress), Texas",17372,9708,7664,11531,5841
+5001800US4838,"Congressional District 38 (118th Congress), Texas",16150,4831,11319,11862,4288
+5001800US4901,"Congressional District 1 (118th Congress), Utah",15796,8397,7399,9703,6093
+5001800US4902,"Congressional District 2 (118th Congress), Utah",19331,9578,9753,12586,6745
+5001800US4903,"Congressional District 3 (118th Congress), Utah",13182,5717,7465,8908,4274
+5001800US4904,"Congressional District 4 (118th Congress), Utah",12809,4879,7930,8812,3997
+5001800US5000,"Congressional District (at Large) (118th Congress), Vermont",27861,19433,8428,13743,14118
+5001800US5101,"Congressional District 1 (118th Congress), Virginia",20341,8690,11651,12814,7527
+5001800US5102,"Congressional District 2 (118th Congress), Virginia",24280,12906,11374,12974,11306
+5001800US5103,"Congressional District 3 (118th Congress), Virginia",52669,25817,26852,35537,17132
+5001800US5104,"Congressional District 4 (118th Congress), Virginia",46097,25265,20832,29355,16742
+5001800US5105,"Congressional District 5 (118th Congress), Virginia",42744,23524,19220,26756,15988
+5001800US5106,"Congressional District 6 (118th Congress), Virginia",31978,17229,14749,20556,11422
+5001800US5107,"Congressional District 7 (118th Congress), Virginia",24109,11201,12908,11939,12170
+5001800US5108,"Congressional District 8 (118th Congress), Virginia",18891,9424,9467,11801,7090
+5001800US5109,"Congressional District 9 (118th Congress), Virginia",57537,31508,26029,33855,23682
+5001800US5110,"Congressional District 10 (118th Congress), Virginia",9926,3992,5934,6577,3349
+5001800US5111,"Congressional District 11 (118th Congress), Virginia",9358,4063,5295,5311,4047
+5001800US5301,"Congressional District 1 (118th Congress), Washington",19863,11263,8600,10941,8922
+5001800US5302,"Congressional District 2 (118th Congress), Washington",38465,22802,15663,20558,17907
+5001800US5303,"Congressional District 3 (118th Congress), Washington",42935,24192,18743,25709,17226
+5001800US5304,"Congressional District 4 (118th Congress), Washington",50367,21333,29034,33931,16436
+5001800US5305,"Congressional District 5 (118th Congress), Washington",51565,30349,21216,32449,19116
+5001800US5306,"Congressional District 6 (118th Congress), Washington",40834,26167,14667,22776,18058
+5001800US5307,"Congressional District 7 (118th Congress), Washington",23091,17395,5696,12877,10214
+5001800US5308,"Congressional District 8 (118th Congress), Washington",21490,11493,9997,13099,8391
+5001800US5309,"Congressional District 9 (118th Congress), Washington",42083,24058,18025,25105,16978
+5001800US5310,"Congressional District 10 (118th Congress), Washington",40897,19443,21454,24874,16023
+5001800US5401,"Congressional District 1 (118th Congress), West Virginia",74762,47575,27187,43424,31338
+5001800US5402,"Congressional District 2 (118th Congress), West Virginia",61428,37497,23931,38361,23067
+5001800US5501,"Congressional District 1 (118th Congress), Wisconsin",37790,20651,17139,25076,12714
+5001800US5502,"Congressional District 2 (118th Congress), Wisconsin",27442,18814,8628,18538,8904
+5001800US5503,"Congressional District 3 (118th Congress), Wisconsin",34393,20586,13807,21503,12890
+5001800US5504,"Congressional District 4 (118th Congress), Wisconsin",69293,38366,30927,47862,21431
+5001800US5505,"Congressional District 5 (118th Congress), Wisconsin",18375,11608,6767,10255,8120
+5001800US5506,"Congressional District 6 (118th Congress), Wisconsin",30287,18422,11865,18083,12204
+5001800US5507,"Congressional District 7 (118th Congress), Wisconsin",36076,22551,13525,20139,15937
+5001800US5508,"Congressional District 8 (118th Congress), Wisconsin",31292,17981,13311,18640,12652
+5001800US5600,"Congressional District (at Large) (118th Congress), Wyoming",13188,6102,7086,9198,3990
