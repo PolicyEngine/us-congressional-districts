@@ -65,6 +65,7 @@ def get_dataset(dataset: str = "cps_2023", time_period=2023) -> pd.DataFrame:
 def create_district_metric_matrix(
     dataset: str = None,
     ages: pd.DataFrame = pd.DataFrame(),
+    agi_targets: pd.DataFrame = pd.DataFrame(),
     time_period: int = 2023,
 ):
     ages_count_matrix = ages.iloc[:, 2:]
@@ -74,6 +75,8 @@ def create_district_metric_matrix(
     sim.default_calculation_period = time_period
 
     age = sim.calculate("age").values
+    agi = sim.calculate("adjusted_gross_income").values
+    state_code = sim.calculate("state_code").values
 
     matrix = pd.DataFrame()
 
@@ -88,16 +91,36 @@ def create_district_metric_matrix(
             in_age_band, "person", "household"
         )
 
+    for agi_column in agi_targets.columns[1:-1]:  # Skip GEO_ID and NAME
+        # GEO_ID,under_1,1_10k,10k_25k,25k_50k,50k_75k,75k_100k,100k_200k,200k_500k,500k_plus,NAME
+        lower = -np.inf
+        upper = np.inf
+        agi_column = agi_column.replace("k", "000")
+        if "under" in agi_column:
+            upper = int(agi_column.split("under")[1].replace("_", ""))
+        elif "plus" in agi_column:
+            lower = int(agi_column.split("plus")[0].replace("_", ""))
+        else:
+            lower, upper = map(int, agi_column.split("under")[0].split("_"))
+
+        in_agi_band = (agi > lower) & (agi <= upper)
+        matrix[f"agi/{agi_column}"] = sim.map_result(
+            in_agi_band, "tax_unit", "household"
+        )
+
+    matrix["state_code"] = state_code
+
     return matrix
 
 
-def create_target_matrix(ages):
+def create_target_matrix(ages, agi_targets):
     """
     Create an aggregate target matrix for the appropriate geographic area
 
     Args:
         ages: a data frame containing GEO_ID and NAME as the first two columns,
           with target variables afterwards
+        agi_targets: a data frame containing GEO_ID and NAME as the first and last columns,
     """
     ages_count_matrix = ages.iloc[:, 2:]
     age_ranges = list(ages_count_matrix.columns)
@@ -105,6 +128,9 @@ def create_target_matrix(ages):
     y = pd.DataFrame()
     for age_range in age_ranges:
         y[f"age/{age_range}"] = ages[age_range]
+
+    for agi_column in agi_targets.columns[1:-1]:  # Skip GEO_ID and NAME
+        y[f"agi/{agi_column}"] = agi_targets[agi_column]
 
     return y
 
@@ -184,11 +210,15 @@ def create_households(
     age_data_by_district: pd.DataFrame,
 ):
     synth_households = pd.DataFrame()
+    state_codes = age_data_by_district.NAME.apply(lambda x: x[:2])
     for district in age_data_by_district.index:
+        state_subset = data_by_household[
+            data_by_household["state_code"] == state_codes[district]
+        ]
         households_in_district = pd.DataFrame(
             {
-                "household_id": data_by_household.sample(
-                    sample_per_district
+                "household_id": state_subset.sample(
+                    sample_per_district, replace=True
                 ).index.values,
             }
         )
@@ -210,9 +240,12 @@ def create_target_names(
     return np.array(targets)
 
 
-def calibrate(epochs: int = 128, overwrite_ecps: bool = True):
+def calibrate():
     age_data_by_district = pd.read_csv(
         get_data_directory() / "input" / "demographics" / "age_district.csv"
+    )
+    agi_data_by_district = pd.read_csv(
+        get_data_directory() / "input" / "soi" / "agi_district.csv"
     )
 
     target_district_names = age_data_by_district.NAME
@@ -220,10 +253,13 @@ def calibrate(epochs: int = 128, overwrite_ecps: bool = True):
     data_by_household = create_district_metric_matrix(
         dataset=get_dataset("cps_2023", 2023),
         ages=age_data_by_district,
+        agi_targets=agi_data_by_district,
         time_period=2023,
     )
 
-    targets_by_district = create_target_matrix(age_data_by_district)
+    targets_by_district = create_target_matrix(
+        age_data_by_district, agi_data_by_district
+    )
     count_districts, count_targets = targets_by_district.shape
     target_names = create_target_names(
         targets_by_district, target_district_names
@@ -239,7 +275,9 @@ def calibrate(epochs: int = 128, overwrite_ecps: bool = True):
     device = "mps:0" if torch.backends.mps.is_available() else "cpu"
 
     data_by_household_tensor = torch.tensor(
-        data_by_household.values, dtype=torch.float32, device=device
+        data_by_household.drop(columns=["state_code"]).values,
+        dtype=torch.float32,
+        device=device,
     )
     households_tensor = torch.tensor(
         households.values, dtype=torch.int64, device=device
@@ -295,7 +333,7 @@ def calibrate(epochs: int = 128, overwrite_ecps: bool = True):
         target_names=target_names,
         estimate_function=estimate_targets,
         epochs=128,
-        learning_rate=0.1,
+        learning_rate=0.2,
     )
 
     calibration.calibrate()
