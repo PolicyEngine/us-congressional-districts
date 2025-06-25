@@ -10,6 +10,11 @@ from huggingface_hub import hf_hub_download
 from policyengine_core.data import Dataset
 from policyengine_us import Microsimulation
 from us_congressional_districts.utils import get_data_directory
+import pandas as pd
+import numpy as np
+import torch
+from microcalibrate import Calibration
+import logging
 
 # TODO (baogorek): A task is to use the mapping matrix
 from us_congressional_districts.district_mapping import (
@@ -175,130 +180,124 @@ def create_district_to_state_matrix():
     return mapping_matrix
 
 
+def create_households(
+    sample_per_district: int, data_by_household: pd.DataFrame
+):
+    synth_households = pd.DataFrame()
+    for district in age_data_by_district.index:
+        households_in_district = pd.DataFrame(
+            {
+                "household_id": data_by_household.sample(
+                    sample_per_district
+                ).index.values,
+            }
+        )
+        households_in_district["district"] = district
+        synth_households = pd.concat(
+            [synth_households, households_in_district]
+        )
+
+    return synth_households
+
+
+def create_target_names(
+    targets_by_district: pd.DataFrame, district_names: np.ndarray
+) -> list:
+    targets = []
+    for district in district_names:
+        for age_band in targets_by_district.columns:
+            targets.append(f"{district}/{age_band}")
+    return np.array(targets)
+
+
 def calibrate(epochs: int = 128, overwrite_ecps: bool = True):
-    # Target data sets (there's probably a better way to do this)
-    ages_district = pd.read_csv(
+    age_data_by_district = pd.read_csv(
         get_data_directory() / "input" / "demographics" / "age_district.csv"
     )
 
-    ages_state = pd.read_csv(
-        get_data_directory() / "input" / "demographics" / "age_state.csv"
+    target_district_names = age_data_by_district.NAME
+
+    data_by_household = create_district_metric_matrix(
+        dataset=get_dataset("cps_2023", 2023),
+        ages=age_data_by_district,
+        time_period=2023,
     )
 
-    ages_national = pd.read_csv(
-        get_data_directory() / "input" / "demographics" / "age_national.csv"
+    targets_by_district = create_target_matrix(age_data_by_district)
+    count_districts, count_targets = targets_by_district.shape
+    target_names = create_target_names(
+        targets_by_district, target_district_names
     )
 
-    dataset = get_dataset("cps_2023", 2023)
-    # the metrics matrix
-    matrix_ = create_district_metric_matrix(dataset, ages_district, 2023)
-    state_mask = create_state_mask(dataset, ages_district.GEO_ID, 2023)
+    households = create_households(
+        sample_per_district=1_000, data_by_household=data_by_household
+    )
+    weights = np.ones(len(households)) * (150e6 / len(households))
 
-    y_ = create_target_matrix(ages_district)
-    y_national_ = create_target_matrix(ages_national)
-    y_state_ = create_target_matrix(ages_state)
+    device = "mps:0" if torch.backends.mps.is_available() else "cpu"
 
-    sim = Microsimulation(dataset=dataset)
-    sim.default_calculation_period = 2023
+    data_by_household_tensor = torch.tensor(
+        data_by_household.values, dtype=torch.float32, device=device
+    )
+    households_tensor = torch.tensor(
+        households.values, dtype=torch.int64, device=device
+    )
+    targets = targets_by_district.values.flatten()
 
-    COUNT_DISTRICTS = 435
+    def estimate_targets(weights: torch.Tensor) -> torch.Tensor:
+        """
+        Estimate targets based on the weights.
 
-    original_weights = np.log(
-        sim.calculate("household_weight").values / COUNT_DISTRICTS
+        Args:
+            weights: Shape [43500] - one weight per (district, household) pair
+
+        Returns:
+            Shape [435*18] - flattened estimated targets for all districts and age bands
+        """
+        # Extract household and district indices (note the order!)
+        household_indices = households_tensor[
+            :, 0
+        ]  # Shape: [43500] - actual household IDs
+        district_indices = households_tensor[
+            :, 1
+        ]  # Shape: [43500] - district indices (0-434)
+
+        # Get household data for the sampled households
+        sampled_household_data = data_by_household_tensor[household_indices]
+
+        # Apply weights: multiply each household's demographics by its weight
+        weighted_household_data = weights.unsqueeze(1) * sampled_household_data
+
+        # Sum weighted household data by district
+        estimated_targets = torch.zeros(
+            count_districts,
+            count_targets,
+            dtype=torch.float32,
+            device=weights.device,
+        )
+        estimated_targets.scatter_add_(
+            0,
+            district_indices.unsqueeze(1).expand(-1, count_targets),
+            weighted_household_data,
+        )
+
+        return estimated_targets.flatten()
+
+    # Set to warning logging level
+
+    logging.basicConfig(level=logging.ERROR)
+
+    calibration = Calibration(
+        targets=targets,
+        weights=weights,
+        target_names=target_names,
+        estimate_function=estimate_targets,
+        epochs=128,
+        learning_rate=0.1,
     )
 
-    weights = torch.tensor(
-        np.ones((COUNT_DISTRICTS, len(original_weights))) * original_weights,
-        dtype=torch.float32,
-        requires_grad=True,
-    )
-
-    # PyTorch metrics matrix
-    metrics = torch.tensor(matrix_.values, dtype=torch.float32)
-
-    # PyTorch targets for different geographic aggregations
-    y = torch.tensor(y_.values, dtype=torch.float32)
-    y_national = torch.tensor(y_national_.values, dtype=torch.float32)
-    y_state = torch.tensor(y_state_.values, dtype=torch.float32)
-
-    r = torch.tensor(state_mask, dtype=torch.float32)
-
-    district_to_state_matrix = create_district_to_state_matrix()
-
-    def loss(w):
-        pred = (w.unsqueeze(-1) * metrics.unsqueeze(0)).sum(dim=1)
-        mse = torch.mean(((pred - y) / y) ** 2)
-
-        pred_n = (w.sum(axis=0) * metrics.T).sum(axis=1)
-        mse_n = torch.mean(((pred_n - y_national) / y_national) ** 2)
-
-        pred_s = torch.sparse.mm(district_to_state_matrix, pred)
-        mse_s = torch.mean(((pred_s - y_state) / y_state) ** 2)
-
-        return mse + mse_n + mse_s
-
-    optimizer = torch.optim.Adam([weights], lr=0.15)
-
-    desc = range(32) if os.environ.get("DATA_LITE") else range(epochs)
-    final_weights = (torch.exp(weights) * r).detach().numpy()
-
-    for epoch in desc:
-        optimizer.zero_grad()
-        weights_ = torch.exp(weights) * r
-        loss_value = loss(weights_)
-        loss_value.backward()
-        optimizer.step()
-
-        if epoch % 1 == 0:
-            print(f"Loss: {loss_value.item()}, Epoch: {epoch}")
-        if epoch % 10 == 0:
-            final_weights = (torch.exp(weights) * r).detach().numpy()
-
-            with h5py.File(
-                get_data_directory()
-                / "output"
-                / "congressional_district_weights.h5",
-                "w",
-            ) as f:
-                f.create_dataset("2023", data=final_weights)
-
-            if overwrite_ecps:
-                with h5py.File(
-                    get_data_directory() / "input" / "cps" / "cps_2023.h5",
-                    "r+",
-                ) as f:
-                    hh_weight_ds_name = (
-                        "district_reweighting/household_weight/2023"
-                    )
-                    if hh_weight_ds_name in f:
-                        del f[hh_weight_ds_name]
-                    f.create_dataset(
-                        hh_weight_ds_name, data=final_weights.sum(axis=0)
-                    )
-
-                    district_weight_ds_name = (
-                        "district_reweighting/district_weight/2023"
-                    )
-                    if district_weight_ds_name in f:
-                        del f[district_weight_ds_name]
-                    f.create_dataset(
-                        district_weight_ds_name, data=final_weights.sum(axis=1)
-                    )
-
-                    state_weight_ds_name = (
-                        "district_reweighting/state_weight/2023"
-                    )
-                    if state_weight_ds_name in f:
-                        del f[state_weight_ds_name]
-                    f.create_dataset(
-                        state_weight_ds_name,
-                        data=(
-                            district_to_state_matrix.to_dense().numpy()
-                            @ final_weights.sum(axis=1)
-                        ),
-                    )
-
-    return final_weights
+    calibration.calibrate()
+    calibration.performance_df.to_csv("calibration_log.csv", index=False)
 
 
 if __name__ == "__main__":
