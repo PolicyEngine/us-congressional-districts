@@ -25,6 +25,10 @@ dependencies = [
     "openpyxl",
     "microcalibrate>=0.10.0",
     "numpy>=1.26.4",
+    "huggingface-hub>=0.33.1",
+    "policyengine-core>=3.17.0",
+    "policyengine-us>=1.324.0",
+    "black>=25.1.0",
 ]
 
 [project.scripts]

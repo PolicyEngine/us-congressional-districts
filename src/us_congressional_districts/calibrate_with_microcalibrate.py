@@ -29,15 +29,6 @@ def create_households(
     return synth_households
 
 
-def abbrev_name(name):
-    # 'Congressional District 1 (118th Congress), Alabama' -> AL-01
-    district_number = name.split("District ")[1].split(" ")[0]
-    state = name.split(", ")[-1].strip()
-    return f"{state}{district_number.zfill(2)}".replace("-", "").replace(
-        "(at", "01"
-    )
-
-
 def create_target_names(
     targets_by_district: pd.DataFrame, district_names: np.ndarray
 ) -> list:
@@ -52,7 +43,7 @@ age_data_by_district = pd.read_csv(
     get_data_directory() / "input" / "demographics" / "age_district.csv"
 )
 
-target_state_names = age_data_by_district.NAME.copy().apply(abbrev_name)
+target_district_names = age_data_by_district.NAME
 
 data_by_household = create_district_metric_matrix(
     dataset=get_dataset("cps_2023", 2023),
@@ -62,7 +53,7 @@ data_by_household = create_district_metric_matrix(
 
 targets_by_district = create_target_matrix(age_data_by_district)
 count_districts, count_targets = targets_by_district.shape
-target_names = create_target_names(targets_by_district, target_state_names)
+target_names = create_target_names(targets_by_district, target_district_names)
 
 households = create_households(
     sample_per_district=1_000, data_by_household=data_by_household

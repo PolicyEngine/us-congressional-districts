@@ -19,3 +19,6 @@ documentation:
 
 test:
 	echo "No tests yet"
+
+format:
+	black . -l 79
