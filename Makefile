@@ -7,6 +7,7 @@ targets:
 
 data:
 	python src/us_congressional_districts/calibrate.py
+	python src/us_congressional_districts/calibrate_with_microcalibrate.py
 
 install-uv:
 	uv pip install -e .

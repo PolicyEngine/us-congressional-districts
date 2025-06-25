@@ -37,6 +37,11 @@ jobs:
             uv pip install policyengine-us --system
         - name: Build data
           run: make data
+        - name: Save calibration log
+          uses: actions/upload-artifact@v4
+          with:
+            name: calibration_log.csv
+            path: calibration_log.csv
         - name: Run tests
           run: make test
         - name: Build documentation
