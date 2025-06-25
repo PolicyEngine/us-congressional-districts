@@ -65,7 +65,7 @@ count_districts, count_targets = targets_by_district.shape
 target_names = create_target_names(targets_by_district, target_state_names)
 
 households = create_households(
-    sample_per_district=10, data_by_household=data_by_household
+    sample_per_district=1_000, data_by_household=data_by_household
 )
 weights = np.ones(len(households)) * (150e6 / len(households))
 
