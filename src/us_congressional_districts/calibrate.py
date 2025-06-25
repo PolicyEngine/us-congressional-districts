@@ -48,8 +48,6 @@ for row in mapping_df.itertuples(index=False):
 
 assert np.allclose(mapping_matrix.sum(axis=1), 1.0), "Row totals aren't 1.0"
 
-print(mapping_matrix.shape)  # (435, 435)
-
 
 def get_dataset(dataset: str = "cps_2023", time_period=2023) -> pd.DataFrame:
     """
@@ -181,7 +179,9 @@ def create_district_to_state_matrix():
 
 
 def create_households(
-    sample_per_district: int, data_by_household: pd.DataFrame
+    sample_per_district: int,
+    data_by_household: pd.DataFrame,
+    age_data_by_district: pd.DataFrame,
 ):
     synth_households = pd.DataFrame()
     for district in age_data_by_district.index:
@@ -230,7 +230,9 @@ def calibrate(epochs: int = 128, overwrite_ecps: bool = True):
     )
 
     households = create_households(
-        sample_per_district=1_000, data_by_household=data_by_household
+        sample_per_district=1_000,
+        data_by_household=data_by_household,
+        age_data_by_district=age_data_by_district,
     )
     weights = np.ones(len(households)) * (150e6 / len(households))
 
