@@ -62,6 +62,16 @@ def get_dataset(dataset: str = "cps_2023", time_period=2023) -> pd.DataFrame:
     return Dataset.from_file(dataset_path, time_period=time_period)
 
 
+def get_agi_band_label(lower: float, upper: float) -> str:
+    """Get the label for the AGI band based on lower and upper bounds."""
+    if np.isneginf(lower) or lower <= 0:
+        return f"under_{int(upper)}"
+    elif np.isposinf(upper):
+        return f"{int(lower)}_plus"
+    else:
+        return f"{int(lower)}_{int(upper)}"
+
+
 def create_district_metric_matrix(
     dataset: str = None,
     ages: pd.DataFrame = pd.DataFrame(),
@@ -91,21 +101,17 @@ def create_district_metric_matrix(
             in_age_band, "person", "household"
         )
 
-    for agi_column in agi_targets.columns[1:-1]:  # Skip GEO_ID and NAME
-        # GEO_ID,under_1,1_10k,10k_25k,25k_50k,50k_75k,75k_100k,100k_200k,200k_500k,500k_plus,NAME
-        lower = -np.inf
-        upper = np.inf
-        agi_column = agi_column.replace("k", "000")
-        if "under" in agi_column:
-            upper = int(agi_column.split("under")[1].replace("_", ""))
-        elif "plus" in agi_column:
-            lower = int(agi_column.split("plus")[0].replace("_", ""))
-        else:
-            lower, upper = map(int, agi_column.split("under")[0].split("_"))
+    agi_long = agi_targets[
+        ["AGI_LOWER_BOUND", "AGI_UPPER_BOUND"]
+    ].drop_duplicates()  # drop duplicates to avoid reduncancy calculating the same band multiple times
 
-        in_agi_band = (agi > lower) & (agi <= upper)
-        matrix[f"agi/{agi_column}"] = sim.map_result(
-            in_agi_band, "tax_unit", "household"
+    for _, bounds in agi_long.iterrows():
+        lower, upper = bounds.AGI_LOWER_BOUND, bounds.AGI_UPPER_BOUND
+        band = get_agi_band_label(lower, upper)
+
+        in_band = (agi > lower) & (agi <= upper)
+        matrix[f"agi/{band}"] = sim.map_result(
+            in_band, "tax_unit", "household"
         )
 
     matrix["state_code"] = state_code
@@ -118,9 +124,9 @@ def create_target_matrix(ages, agi_targets):
     Create an aggregate target matrix for the appropriate geographic area
 
     Args:
-        ages: a data frame containing GEO_ID and NAME as the first two columns,
+        ages: a data frame containing GEO_ID and GEO_NAME as the first two columns,
           with target variables afterwards
-        agi_targets: a data frame containing GEO_ID and NAME as the first and last columns,
+        agi_targets: a data frame containing GEO_ID and GEO_NAME as the first and last columns,
     """
     ages_count_matrix = ages.iloc[:, 2:]
     age_ranges = list(ages_count_matrix.columns)
@@ -129,8 +135,15 @@ def create_target_matrix(ages, agi_targets):
     for age_range in age_ranges:
         y[f"age/{age_range}"] = ages[age_range]
 
-    for agi_column in agi_targets.columns[1:-1]:  # Skip GEO_ID and NAME
-        y[f"agi/{agi_column}"] = agi_targets[agi_column]
+    agi_with_labels = agi_targets.assign(
+        band=lambda df: df.apply(
+            lambda r: get_agi_band_label(r.AGI_LOWER_BOUND, r.AGI_UPPER_BOUND),
+            axis=1,
+        )
+    )
+
+    for band, df_band in agi_with_labels.groupby("band"):
+        y[f"agi/{band}"] = df_band["VALUE"].values
 
     return y
 
@@ -210,7 +223,7 @@ def create_households(
     age_data_by_district: pd.DataFrame,
 ):
     synth_households = pd.DataFrame()
-    state_codes = age_data_by_district.NAME.apply(lambda x: x[:2])
+    state_codes = age_data_by_district.GEO_NAME.apply(lambda x: x[:2])
     for district in age_data_by_district.index:
         state_subset = data_by_household[
             data_by_household["state_code"] == state_codes[district]
@@ -248,7 +261,7 @@ def calibrate():
         get_data_directory() / "input" / "soi" / "agi_district.csv"
     )
 
-    target_district_names = age_data_by_district.NAME
+    target_district_names = age_data_by_district.GEO_NAME
 
     data_by_household = create_district_metric_matrix(
         dataset=get_dataset("cps_2023", 2023),

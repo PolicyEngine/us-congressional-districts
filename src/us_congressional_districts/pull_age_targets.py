@@ -154,18 +154,24 @@ def pull_age_data(geo, year):
     print(f"Ommitted {geo} geographies:\n\n{omitted_rows[['GEO_ID', 'NAME']]}")
 
     SAVE_DIR = Path(get_data_directory() / "input" / "demographics")
+    age_cols = list(label_to_short_name_mapping.values())
     if geo == "District":
         assert df_geos.shape[0] == 435
-        df_geos["NAME"] = df_geos["NAME"].apply(abbrev_name)
-        df_geos.to_csv(SAVE_DIR / "age_district.csv", index=False)
+        df_geos["GEO_NAME"] = df_geos["NAME"].apply(abbrev_name)
     elif geo == "State":
         assert df_geos.shape[0] == 50
-        df_geos["NAME"] = df_geos["NAME"].map(STATE_NAME_TO_ABBREV)
-        df_geos.to_csv(SAVE_DIR / "age_state.csv", index=False)
+        df_geos["GEO_NAME"] = df_geos["NAME"].map(STATE_NAME_TO_ABBREV)
     elif geo == "National":
         assert df_geos.shape[0] == 1
-        df_geos["NAME"] = df_geos["NAME"].map({"United States": "US"})
-        df_geos.to_csv(SAVE_DIR / "age_national.csv", index=False)
+        df_geos["GEO_NAME"] = df_geos["NAME"].map({"United States": "US"})
+
+    out = df_geos[["GEO_ID", "GEO_NAME"] + age_cols]
+    filename = {
+        "District": "age_district.csv",
+        "State": "age_state.csv",
+        "National": "age_national.csv",
+    }[geo]
+    out.to_csv(SAVE_DIR / filename, index=False)
 
 
 def abbrev_name(name):

@@ -1,4 +1,3 @@
-import requests
 from pathlib import Path
 
 import numpy as np
@@ -13,19 +12,32 @@ from us_congressional_districts.utils import (
 """Utilities to pull AGI targets from the IRS SOI data files."""
 
 
-AGI_RENAME = {
-    "Under $1": "under_1",
-    "$1 under $10,000": "1_10k",
-    "$10,000 under $25,000": "10k_25k",
-    "$25,000 under $50,000": "25k_50k",
-    "$50,000 under $75,000": "50k_75k",
-    "$75,000 under $100,000": "75k_100k",
-    "$100,000 under $200,000": "100k_200k",
-    "$200,000 under $500,000": "200k_500k",
-    "$500,000 or more": "500k_plus",
-}
+SOI_COLUMNS = [
+    "Under $1",
+    "$1 under $10,000",
+    "$10,000 under $25,000",
+    "$25,000 under $50,000",
+    "$50,000 under $75,000",
+    "$75,000 under $100,000",
+    "$100,000 under $200,000",
+    "$200,000 under $500,000",
+    "$500,000 or more",
+]
 
-AGI_STUB_MAP = {i + 1: label for i, label in enumerate(AGI_RENAME)}
+AGI_STUB_TO_BAND = {i + 1: band for i, band in enumerate(SOI_COLUMNS)}
+
+
+AGI_BOUNDS = {
+    "Under $1": (-np.inf, 1),
+    "$1 under $10,000": (1, 10_000),
+    "$10,000 under $25,000": (10_000, 25_000),
+    "$25,000 under $50,000": (25_000, 50_000),
+    "$50,000 under $75,000": (50_000, 75_000),
+    "$75,000 under $100,000": (75_000, 100_000),
+    "$100,000 under $200,000": (100_000, 200_000),
+    "$200,000 under $500,000": (200_000, 500_000),
+    "$500,000 or more": (500_000, np.inf),
+}
 
 NON_VOTING_STATES = {"US", "AS", "GU", "MP", "PR", "VI", "DC", "OA"}
 
@@ -48,26 +60,6 @@ def get_code_name_map() -> dict:
 code_to_name = get_code_name_map()
 
 
-def agi_wide(df_tall: pd.DataFrame, rename_cols: bool = True) -> pd.DataFrame:
-    """Return wide-format AGI counts."""
-    wide = (
-        df_tall.pivot_table(
-            index="GEO_ID",
-            columns="agi_bracket",
-            values="number_of_individuals",
-            aggfunc="sum",
-        )
-        .reindex(columns=AGI_STUB_MAP.values())
-        .fillna(0)
-        .astype(int)
-        .reset_index()
-    )
-    wide.columns.name = None
-    if rename_cols:
-        wide = wide.rename(columns=AGI_RENAME)
-    return wide
-
-
 def pull_national_agi(out_dir: Path | None = None) -> pd.DataFrame:
     """Download and save national AGI totals."""
     df = pd.read_excel(
@@ -76,24 +68,33 @@ def pull_national_agi(out_dir: Path | None = None) -> pd.DataFrame:
 
     assert (
         np.abs(df.iloc[0, 1] - df.iloc[0, 2:12].sum()) < 100
-    ), "Row 0 doesn’t add up — check the file."
+    ), "Row 0 doesn't add up — check the file."
 
     agi_values = df.iloc[0, 2:12].astype(int).to_numpy()
     agi_values = np.concatenate(
         [agi_values[:8], [agi_values[8] + agi_values[9]]]
     )
 
-    out = pd.DataFrame(
+    agi_brackets = [
+        AGI_STUB_TO_BAND[i] for i in range(1, len(SOI_COLUMNS) + 1)
+    ]
+
+    result = pd.DataFrame(
         {
-            "GEO_ID": "0100000US",
-            "agi_bracket": AGI_RENAME.keys(),
-            "number_of_individuals": agi_values,
+            "GEO_ID": ["0100000US"] * len(agi_brackets),
+            "AGI_LOWER_BOUND": [AGI_BOUNDS[b][0] for b in agi_brackets],
+            "AGI_UPPER_BOUND": [AGI_BOUNDS[b][1] for b in agi_brackets],
+            "VALUE": agi_values,
         }
-    )[["GEO_ID", "agi_bracket", "number_of_individuals"]]
+    )
 
-    result = agi_wide(out)
-
-    result["NAME"] = result["GEO_ID"].map(code_to_name)
+    result["GEO_NAME"] = result["GEO_ID"].map(code_to_name)
+    # final column order
+    result = result[
+        ["GEO_ID", "GEO_NAME", "AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VALUE"]
+    ]
+    result["IS_COUNT"] = 1
+    result["VARIABLE"] = None
 
     if out_dir is None:
         out_dir = Path(get_data_directory()) / "input" / "soi"
@@ -118,19 +119,34 @@ def pull_state_agi(out_dir: Path | None = None) -> pd.DataFrame:
     df = pd.concat([df, merged], ignore_index=True)
     df = df[df["AGI_STUB"] != 0]
 
-    df["agi_bracket"] = df["AGI_STUB"].map(AGI_STUB_MAP)
+    df["agi_bracket"] = df["AGI_STUB"].map(AGI_STUB_TO_BAND)
+
     state_fips = get_state_fips_codes()
     df["GEO_ID"] = "0400000US" + df["STATE"].str.lower().map(state_fips)
-    out_df = df[["STATE", "GEO_ID", "agi_bracket", "N1"]].rename(
-        columns={"N1": "number_of_individuals"}
+
+    result = (
+        df.loc[
+            ~df["STATE"].isin(NON_VOTING_STATES),  # drop territories + DC
+            ["GEO_ID", "agi_bracket", "N1"],
+        ]
+        .rename(columns={"N1": "VALUE"})
+        .reset_index(drop=True)
     )
-    out_df = out_df.loc[~out_df["STATE"].isin(NON_VOTING_STATES)].reset_index(
-        drop=True
-    )[["GEO_ID", "agi_bracket", "number_of_individuals"]]
 
-    result = agi_wide(out_df)
+    result["AGI_LOWER_BOUND"] = result["agi_bracket"].map(
+        lambda b: AGI_BOUNDS[b][0]
+    )
+    result["AGI_UPPER_BOUND"] = result["agi_bracket"].map(
+        lambda b: AGI_BOUNDS[b][1]
+    )
+    result["GEO_NAME"] = result["GEO_ID"].map(code_to_name)
 
-    result["NAME"] = result["GEO_ID"].map(code_to_name)
+    # final column order
+    result = result[
+        ["GEO_ID", "GEO_NAME", "AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VALUE"]
+    ]
+    result["IS_COUNT"] = 1
+    result["VARIABLE"] = None
 
     if out_dir is None:
         out_dir = Path(get_data_directory()) / "input" / "soi"
@@ -150,32 +166,40 @@ def pull_district_agi(out_dir: Path | None = None) -> pd.DataFrame:
     )
     df["GEO_ID"] = "5001800US" + df["STATEFIPS"] + df["CONG_DISTRICT"]
 
-    df["agi_bracket"] = df["agi_stub"].map(AGI_STUB_MAP)
-    df = df[["GEO_ID", "CONG_DISTRICT", "STATE", "agi_bracket", "N1"]].rename(
-        columns={"N1": "number_of_individuals"}
-    )
-
-    df["state_fips"] = df["GEO_ID"].str[-4:-2]
-    df["district"] = df["GEO_ID"].str[-2:]
-
     at_large_states = (
-        df.groupby("state_fips")["district"]
+        df.groupby("STATEFIPS")["CONG_DISTRICT"]
         .nunique()
         .pipe(lambda s: s[s == 1].index)
     )
-    clean_df = (
+    df = (
         df.loc[
-            (df["district"] != "00") | (df["state_fips"].isin(at_large_states))
+            (df["CONG_DISTRICT"] != "00")
+            | (df["STATEFIPS"].isin(at_large_states))
         ]
-        .query("state_fips != '11'")
+        .query("STATEFIPS != '11'")  # drop DC
         .reset_index(drop=True)
     )
-    assert clean_df["GEO_ID"].nunique() == 435
+    assert df["GEO_ID"].nunique() == 435
 
-    out_df = clean_df[["GEO_ID", "agi_bracket", "number_of_individuals"]]
-    result = agi_wide(out_df)
+    df["agi_bracket"] = df["agi_stub"].map(AGI_STUB_TO_BAND)
+    result = df[
+        ["GEO_ID", "CONG_DISTRICT", "STATE", "agi_bracket", "N1"]
+    ].rename(columns={"N1": "VALUE"})
 
-    result["NAME"] = result["GEO_ID"].map(code_to_name)
+    result["AGI_LOWER_BOUND"] = result["agi_bracket"].map(
+        lambda b: AGI_BOUNDS[b][0]
+    )
+    result["AGI_UPPER_BOUND"] = result["agi_bracket"].map(
+        lambda b: AGI_BOUNDS[b][1]
+    )
+    result["GEO_NAME"] = result["GEO_ID"].map(code_to_name)
+
+    # final column order
+    result = result[
+        ["GEO_ID", "GEO_NAME", "AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VALUE"]
+    ]
+    result["IS_COUNT"] = 1
+    result["VARIABLE"] = None
 
     if out_dir is None:
         out_dir = Path(get_data_directory()) / "input" / "soi"
