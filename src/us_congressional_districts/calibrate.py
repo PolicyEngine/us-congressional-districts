@@ -103,16 +103,19 @@ def create_district_metric_matrix(
 
     agi_long = agi_targets[
         ["AGI_LOWER_BOUND", "AGI_UPPER_BOUND"]
-    ].drop_duplicates()  # drop duplicates to avoid reduncancy calculating the same band multiple times
+    ].drop_duplicates()  # drop duplicates to avoid redundancy calculating the same band multiple times
 
     for _, bounds in agi_long.iterrows():
         lower, upper = bounds.AGI_LOWER_BOUND, bounds.AGI_UPPER_BOUND
         band = get_agi_band_label(lower, upper)
 
         in_band = (agi > lower) & (agi <= upper)
-        matrix[f"agi/{band}"] = sim.map_result(
-            in_band, "tax_unit", "household"
-        )
+        if agi_targets["VARIABLE"].iat[0] is not None:
+            matrix[f"agi/{agi_targets['VARIABLE']}/{band}"] = sim.map_result(
+                in_band, "tax_unit", "household"
+            )
+        else:
+            matrix[f"agi/{band}"] = sim.map_result(in_band, "tax_unit", "household")
 
     matrix["state_code"] = state_code
 
@@ -143,7 +146,10 @@ def create_target_matrix(ages, agi_targets):
     )
 
     for band, df_band in agi_with_labels.groupby("band"):
-        y[f"agi/{band}"] = df_band["VALUE"].values
+        if agi_targets["VARIABLE"].iat[0] is not None:
+            y[f"agi/{agi_targets['VARIABLE']}/{band}"] = df_band["VALUE"].values
+        else: 
+            y[f"agi/{band}"] = df_band["VALUE"].values
 
     return y
 

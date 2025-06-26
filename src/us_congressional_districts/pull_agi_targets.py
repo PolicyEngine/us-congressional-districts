@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from typing import Optional, Union
+
 import numpy as np
 import pandas as pd
 
@@ -60,17 +62,22 @@ def get_code_name_map() -> dict:
 code_to_name = get_code_name_map()
 
 
-def pull_national_agi(out_dir: Path | None = None) -> pd.DataFrame:
+def pull_national_soi_variable(
+        soi_variable_row: int, # the national SOI xlsx file has a row for each target variable
+        variable_name: Union[str, None],
+        is_count: bool,
+        national_df: Optional[pd.DataFrame] = None,
+        ) -> pd.DataFrame:
     """Download and save national AGI totals."""
     df = pd.read_excel(
         "https://www.irs.gov/pub/irs-soi/22in54us.xlsx", skiprows=7
     )
 
     assert (
-        np.abs(df.iloc[0, 1] - df.iloc[0, 2:12].sum()) < 100
+        np.abs(df.iloc[soi_variable_row, 1] - df.iloc[soi_variable_row, 2:12].sum()) < 100
     ), "Row 0 doesn't add up — check the file."
 
-    agi_values = df.iloc[0, 2:12].astype(int).to_numpy()
+    agi_values = df.iloc[soi_variable_row, 2:12].astype(int).to_numpy()
     agi_values = np.concatenate(
         [agi_values[:8], [agi_values[8] + agi_values[9]]]
     )
@@ -93,17 +100,23 @@ def pull_national_agi(out_dir: Path | None = None) -> pd.DataFrame:
     result = result[
         ["GEO_ID", "GEO_NAME", "AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VALUE"]
     ]
-    result["IS_COUNT"] = 1
-    result["VARIABLE"] = None
+    result["IS_COUNT"] = int(is_count)
+    result["VARIABLE"] = variable_name
 
-    if out_dir is None:
-        out_dir = Path(get_data_directory()) / "input" / "soi"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    result.to_csv(out_dir / "agi_national.csv", index=False)
+    if national_df is not None:
+        # If a DataFrame is passed, we append the new data to it.
+        df = pd.concat([national_df, result], ignore_index=True)
+        return df
+
     return result
 
 
-def pull_state_agi(out_dir: Path | None = None) -> pd.DataFrame:
+def pull_state_soi_variable(
+        soi_variable_col: str, # the state SOI csv file has a column for each target variable
+        variable_name: Union[str, None],
+        is_count: bool,
+        state_df: Optional[pd.DataFrame] = None,
+) -> pd.DataFrame:
     """Download and save state AGI totals."""
     df = pd.read_csv(
         "https://www.irs.gov/pub/irs-soi/22in55cmcsv.csv", thousands=","
@@ -112,7 +125,7 @@ def pull_state_agi(out_dir: Path | None = None) -> pd.DataFrame:
     merged = (
         df[df["AGI_STUB"].isin([9, 10])]
         .groupby("STATE", as_index=False)
-        .agg({"N1": "sum"})
+        .agg({soi_variable_col: "sum"})
         .assign(AGI_STUB=9)
     )
     df = df[~df["AGI_STUB"].isin([9, 10])]
@@ -127,9 +140,9 @@ def pull_state_agi(out_dir: Path | None = None) -> pd.DataFrame:
     result = (
         df.loc[
             ~df["STATE"].isin(NON_VOTING_STATES),  # drop territories + DC
-            ["GEO_ID", "agi_bracket", "N1"],
+            ["GEO_ID", "agi_bracket", soi_variable_col],
         ]
-        .rename(columns={"N1": "VALUE"})
+        .rename(columns={soi_variable_col: "VALUE"})
         .reset_index(drop=True)
     )
 
@@ -145,17 +158,23 @@ def pull_state_agi(out_dir: Path | None = None) -> pd.DataFrame:
     result = result[
         ["GEO_ID", "GEO_NAME", "AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VALUE"]
     ]
-    result["IS_COUNT"] = 1
-    result["VARIABLE"] = None
+    result["IS_COUNT"] = int(is_count)
+    result["VARIABLE"] = variable_name
 
-    if out_dir is None:
-        out_dir = Path(get_data_directory()) / "input" / "soi"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    result.to_csv(out_dir / "agi_state.csv", index=False)
+    if state_df is not None:
+        # If a DataFrame is passed, we append the new data to it.
+        df = pd.concat([state_df, result], ignore_index=True)
+        return df
+
     return result
 
 
-def pull_district_agi(out_dir: Path | None = None) -> pd.DataFrame:
+def pull_district_soi_variable(
+        soi_variable_col: str, # the district SOI csv file has a column for each target variable
+        variable_name: Union[str, None],
+        is_count: bool,
+        district_df: Optional[pd.DataFrame] = None,
+) -> pd.DataFrame:
     """Download and save congressional district AGI totals."""
     df = pd.read_csv("https://www.irs.gov/pub/irs-soi/22incd.csv")
     df = df[df["agi_stub"] != 0]
@@ -183,8 +202,8 @@ def pull_district_agi(out_dir: Path | None = None) -> pd.DataFrame:
 
     df["agi_bracket"] = df["agi_stub"].map(AGI_STUB_TO_BAND)
     result = df[
-        ["GEO_ID", "CONG_DISTRICT", "STATE", "agi_bracket", "N1"]
-    ].rename(columns={"N1": "VALUE"})
+        ["GEO_ID", "CONG_DISTRICT", "STATE", "agi_bracket", soi_variable_col]
+    ].rename(columns={soi_variable_col: "VALUE"})
 
     result["AGI_LOWER_BOUND"] = result["agi_bracket"].map(
         lambda b: AGI_BOUNDS[b][0]
@@ -198,21 +217,62 @@ def pull_district_agi(out_dir: Path | None = None) -> pd.DataFrame:
     result = result[
         ["GEO_ID", "GEO_NAME", "AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VALUE"]
     ]
-    result["IS_COUNT"] = 1
-    result["VARIABLE"] = None
+    result["IS_COUNT"] = int(is_count)
+    result["VARIABLE"] = variable_name
 
-    if out_dir is None:
-        out_dir = Path(get_data_directory()) / "input" / "soi"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    result.to_csv(out_dir / "agi_district.csv", index=False)
+    if district_df is not None:
+        # If a DataFrame is passed, we append the new data to it.
+        df = pd.concat([district_df, result], ignore_index=True)
+        return df
+
     return result
 
 
 def main() -> None:
-    pull_national_agi()
-    pull_state_agi()
-    pull_district_agi()
+    national_agi_count_df = pull_national_soi_variable(
+        soi_variable_row=0, # Row 0 is the total number of returns (count) for AGI brackets
+        variable_name=None,
+        is_count= True,
+        )
+    national_df = pull_national_soi_variable(
+        soi_variable_row=17, # Row 17 is the total Adjusted Gross Income (amount) for AGI brackets
+        variable_name="adjusted_gross_income",
+        is_count= False,
+        national_df=national_agi_count_df,
+        )
+    out_dir = Path(get_data_directory()) / "input" / "soi"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    national_df.to_csv(out_dir / "agi_national.csv", index=False)
 
+    state_agi_count_df = pull_state_soi_variable(
+        soi_variable_col= "N1", # Column "N1" contains the total number of returns (count) for AGI brackets
+        variable_name=None,
+        is_count=True,
+    )
+    state_df = pull_state_soi_variable(
+        soi_variable_col= "A00100", # Column "A00100" contains the the total Adjusted Gross Income (amount) for AGI brackets
+        variable_name="adjusted_gross_income",
+        is_count=False,
+        state_df=state_agi_count_df,
+    )
+    out_dir = Path(get_data_directory()) / "input" / "soi"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    state_df.to_csv(out_dir / "agi_state.csv", index=False)
+
+    district_agi_count_df = pull_district_soi_variable(
+        soi_variable_col= "N1", # Column "N1" contains the total number of returns (count) for AGI brackets
+        variable_name=None,
+        is_count=True,
+    )
+    district_df = pull_district_soi_variable(
+        soi_variable_col= "A00100", # Column "A00100" contains the the total Adjusted Gross Income (amount) for AGI brackets
+        variable_name="adjusted_gross_income",
+        is_count=False,
+        district_df=district_agi_count_df,
+    )
+    out_dir = Path(get_data_directory()) / "input" / "soi"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    district_df.to_csv(out_dir / "agi_district.csv", index=False)
 
 if __name__ == "__main__":
     main()
