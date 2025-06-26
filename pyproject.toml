@@ -15,7 +15,6 @@ dependencies = [
     "h5py>=3.13.0",
     "jupyter-book==1.0.4.post1",
     "matplotlib>=3.10.1",
-    "numpy>=2.2.5",
     "pandas>=2.2.3",
     "pip-system-certs>=4.0",
     "ruff>=0.11.8",
@@ -23,7 +22,13 @@ dependencies = [
     "sphinx==7.4.7",
     "torch>=2.7.0",
     "us>=3.2.0",
-    "openpyxl"
+    "openpyxl",
+    "microcalibrate>=0.13.1",
+    "numpy>=1.26.4",
+    "huggingface-hub>=0.33.1",
+    "policyengine-core>=3.17.0",
+    "policyengine-us>=1.324.0",
+    "black>=25.1.0",
 ]
 
 [project.scripts]

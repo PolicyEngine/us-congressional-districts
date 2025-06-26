@@ -30,6 +30,24 @@ AGI_STUB_MAP = {i + 1: label for i, label in enumerate(AGI_RENAME)}
 NON_VOTING_STATES = {"US", "AS", "GU", "MP", "PR", "VI", "DC", "OA"}
 
 
+def get_code_name_map() -> dict:
+    demographics = get_data_directory() / "input" / "demographics"
+    age_district = pd.read_csv(demographics / "age_district.csv")
+    age_state = pd.read_csv(demographics / "age_state.csv")
+    age_national = pd.read_csv(demographics / "age_national.csv")
+
+    for df in [age_district, age_state, age_national]:
+        df = df[["GEO_ID", "NAME"]]
+
+    combined = pd.concat(
+        [age_district, age_state, age_national], ignore_index=True
+    )
+    return combined.set_index("GEO_ID")["NAME"].to_dict()
+
+
+code_to_name = get_code_name_map()
+
+
 def agi_wide(df_tall: pd.DataFrame, rename_cols: bool = True) -> pd.DataFrame:
     """Return wide-format AGI counts."""
     wide = (
@@ -75,6 +93,8 @@ def pull_national_agi(out_dir: Path | None = None) -> pd.DataFrame:
 
     result = agi_wide(out)
 
+    result["NAME"] = result["GEO_ID"].map(code_to_name)
+
     if out_dir is None:
         out_dir = Path(get_data_directory()) / "input" / "soi"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -109,6 +129,8 @@ def pull_state_agi(out_dir: Path | None = None) -> pd.DataFrame:
     )[["GEO_ID", "agi_bracket", "number_of_individuals"]]
 
     result = agi_wide(out_df)
+
+    result["NAME"] = result["GEO_ID"].map(code_to_name)
 
     if out_dir is None:
         out_dir = Path(get_data_directory()) / "input" / "soi"
@@ -152,6 +174,8 @@ def pull_district_agi(out_dir: Path | None = None) -> pd.DataFrame:
 
     out_df = clean_df[["GEO_ID", "agi_bracket", "number_of_individuals"]]
     result = agi_wide(out_df)
+
+    result["NAME"] = result["GEO_ID"].map(code_to_name)
 
     if out_dir is None:
         out_dir = Path(get_data_directory()) / "input" / "soi"
