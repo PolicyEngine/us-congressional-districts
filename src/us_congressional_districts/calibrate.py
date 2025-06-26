@@ -297,10 +297,10 @@ def calibrate():
         # Extract household and district indices (note the order!)
         household_indices = households_tensor[
             :, 0
-        ]  # Shape: [43500] - actual household IDs
+        ]  # Shape: [435000] - actual household IDs
         district_indices = households_tensor[
             :, 1
-        ]  # Shape: [43500] - district indices (0-434)
+        ]  # Shape: [435000] - district indices (0-434)
 
         # Get household data for the sampled households
         sampled_household_data = data_by_household_tensor[household_indices]
