@@ -75,7 +75,7 @@ def get_agi_band_label(lower: float, upper: float) -> str:
 def create_district_metric_matrix(
     dataset: str = None,
     ages: pd.DataFrame = pd.DataFrame(),
-    agi_targets: pd.DataFrame = pd.DataFrame(),
+    soi_targets: pd.DataFrame = pd.DataFrame(),
     time_period: int = 2023,
 ):
     ages_count_matrix = ages.iloc[:, 2:]
@@ -85,7 +85,17 @@ def create_district_metric_matrix(
     sim.default_calculation_period = time_period
 
     age = sim.calculate("age").values
-    agi = sim.calculate("adjusted_gross_income").values
+
+    soi_target_variables = (
+        soi_targets["VARIABLE"]
+        .str.replace(r"_(count|amount)", "", regex=True)
+        .unique()
+    )
+
+    sim_calculations = {}
+    for variable in soi_target_variables:
+        values = sim.calculate(variable).values
+        sim_calculations[variable] = values
     state_code = sim.calculate("state_code").values
 
     matrix = pd.DataFrame()
@@ -102,7 +112,7 @@ def create_district_metric_matrix(
         )
 
     agi_long = (
-        agi_targets[
+        soi_targets[
             ["AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VARIABLE", "IS_COUNT"]
         ]
         .drop_duplicates()
@@ -115,7 +125,9 @@ def create_district_metric_matrix(
         is_count = row.IS_COUNT  # 1 → True, 0 → False
         band = get_agi_band_label(lower, upper)
 
-        mask = (agi > lower) & (agi <= upper)
+        mask = (sim_calculations["adjusted_gross_income"] > lower) & (
+            sim_calculations["adjusted_gross_income"] <= upper
+        )
 
         if is_count:
             col = f"soi/{var}/{band}"
@@ -123,7 +135,12 @@ def create_district_metric_matrix(
         else:
             col = f"soi/{var}/{band}"
             metric = sim.map_result(
-                agi * mask, "tax_unit", "household"
+                sim_calculations[
+                    var.replace("_count", "").replace("_amount", "")
+                ]
+                * mask,
+                "tax_unit",
+                "household",
             )  # SUM $
 
         matrix[col] = metric
@@ -133,14 +150,14 @@ def create_district_metric_matrix(
     return matrix
 
 
-def create_target_matrix(ages, agi_targets):
+def create_target_matrix(ages, soi_targets):
     """
     Create an aggregate target matrix for the appropriate geographic area
 
     Args:
         ages: a data frame containing GEO_ID and GEO_NAME as the first two columns,
           with target variables afterwards
-        agi_targets: a data frame containing GEO_ID and GEO_NAME as the first and last columns,
+        soi_targets: a data frame containing GEO_ID and GEO_NAME as the first and last columns,
     """
     ages_count_matrix = ages.iloc[:, 2:]
     age_ranges = list(ages_count_matrix.columns)
@@ -149,7 +166,7 @@ def create_target_matrix(ages, agi_targets):
     for age_range in age_ranges:
         y[f"age/{age_range}"] = ages[age_range]
 
-    agi_with_labels = agi_targets.assign(
+    agi_with_labels = soi_targets.assign(
         band=lambda df: df.apply(
             lambda r: get_agi_band_label(r.AGI_LOWER_BOUND, r.AGI_UPPER_BOUND),
             axis=1,
@@ -161,10 +178,7 @@ def create_target_matrix(ages, agi_targets):
 
     for variable, df_var in agi_with_labels.groupby("VARIABLE", sort=False):
         for band, df_band in df_var.groupby("band", sort=False):
-            if variable is not None:
-                y[f"soi/{variable}/{band}"] = df_band["VALUE"].values
-            else:
-                y[f"soi/{band}"] = df_band["VALUE"].values
+            y[f"soi/{variable}/{band}"] = df_band["VALUE"].values
 
     return y
 
@@ -287,7 +301,7 @@ def calibrate():
     data_by_household = create_district_metric_matrix(
         dataset=get_dataset("cps_2023", 2023),
         ages=age_data_by_district,
-        agi_targets=agi_data_by_district,
+        soi_targets=agi_data_by_district,
         time_period=2023,
     )
 
