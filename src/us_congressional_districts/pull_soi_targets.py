@@ -41,6 +41,9 @@ AGI_BOUNDS = {
 
 NON_VOTING_STATES = {"US", "AS", "GU", "MP", "PR", "VI", "DC", "OA"}
 
+
+### Add variables and their indices or column names to the dictionaries below to pull them from the SOI files. Make sure to add "_count" at the end of a varaible name if it is a count variable (instead of a total amount variable).
+
 # after skipping the first 7 rows, the national SOI file has targets as row indices:
 NATIONAL_VARIABLES = {
     "adjusted_gross_income_count": 0,
@@ -264,7 +267,7 @@ def create_targets(
         variable_df = variable_pull(
             soi_variable_ident=identifyer,
             variable_name=(
-                variable.replace("count", "")
+                variable.replace("_count", "")
                 if variable.endswith("count")
                 else variable
             ),
