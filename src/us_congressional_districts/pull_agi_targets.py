@@ -107,6 +107,8 @@ def pull_national_soi_variable(
     result["IS_COUNT"] = int(is_count)
     result["VARIABLE"] = variable_name
 
+    np.where(result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"])
+
     if national_df is not None:
         # If a DataFrame is passed, we append the new data to it.
         df = pd.concat([national_df, result], ignore_index=True)
@@ -164,6 +166,8 @@ def pull_state_soi_variable(
     ]
     result["IS_COUNT"] = int(is_count)
     result["VARIABLE"] = variable_name
+
+    np.where(result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"])
 
     if state_df is not None:
         # If a DataFrame is passed, we append the new data to it.
@@ -223,6 +227,8 @@ def pull_district_soi_variable(
     ]
     result["IS_COUNT"] = int(is_count)
     result["VARIABLE"] = variable_name
+
+    np.where(result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"])
 
     if district_df is not None:
         # If a DataFrame is passed, we append the new data to it.
