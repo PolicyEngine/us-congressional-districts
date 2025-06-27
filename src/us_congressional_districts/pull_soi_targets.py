@@ -48,12 +48,14 @@ NON_VOTING_STATES = {"US", "AS", "GU", "MP", "PR", "VI", "DC", "OA"}
 NATIONAL_VARIABLES = {
     "adjusted_gross_income_count": 0,
     "adjusted_gross_income_amount": 17,
+    "employment_income_amount": 21,
 }
 
 # the state and district SOI file have targets as column names:
 GEOGRAPHY_VARIABLES = {
     "adjusted_gross_income_count": "N1",
     "adjusted_gross_income_amount": "A00100",
+    "employment_income_amount": "A00200",
 }
 
 

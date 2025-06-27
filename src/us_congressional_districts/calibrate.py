@@ -64,7 +64,7 @@ def get_dataset(dataset: str = "cps_2023", time_period=2023) -> pd.DataFrame:
 
 def get_agi_band_label(lower: float, upper: float) -> str:
     """Get the label for the AGI band based on lower and upper bounds."""
-    if np.isneginf(lower) or lower <= 0:
+    if lower <= 0:
         return f"under_{int(upper)}"
     elif np.isposinf(upper):
         return f"{int(lower)}_plus"
@@ -134,14 +134,35 @@ def create_district_metric_matrix(
             metric = sim.map_result(mask, "tax_unit", "household")  # COUNT
         else:
             col = f"soi/{var}/{band}"
-            metric = sim.map_result(
-                sim_calculations[
-                    var.replace("_count", "").replace("_amount", "")
-                ]
-                * mask,
-                "tax_unit",
-                "household",
-            )  # SUM $
+            # Get the base variable name (without _count or _amount suffix)
+            base_var = var.replace("_count", "").replace("_amount", "")
+
+            # Check if this variable needs to be mapped from a different entity level
+            if base_var in sim_calculations:
+                var_values = sim_calculations[base_var]
+
+                # If the variable and mask have different shapes, we need to handle the entity mapping
+                if var_values.shape != mask.shape:
+                    # Map the variable values to the same entity level as the mask (tax_unit)
+                    if base_var == "employment_income":
+                        # employment_income is person-level, map to tax_unit level first
+                        var_values_mapped = sim.map_result(
+                            var_values, "person", "tax_unit"
+                        )
+                    else:
+                        var_values_mapped = var_values
+
+                    metric = sim.map_result(
+                        var_values_mapped * mask,
+                        "tax_unit",
+                        "household",
+                    )
+                else:
+                    metric = sim.map_result(
+                        var_values * mask,
+                        "tax_unit",
+                        "household",
+                    )
 
         matrix[col] = metric
 
