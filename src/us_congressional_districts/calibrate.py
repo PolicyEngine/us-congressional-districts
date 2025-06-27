@@ -102,20 +102,26 @@ def create_district_metric_matrix(
         )
 
     agi_long = agi_targets[
-        ["AGI_LOWER_BOUND", "AGI_UPPER_BOUND"]
+        ["AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VARIABLE"]
     ].drop_duplicates()  # drop duplicates to avoid redundancy calculating the same band multiple times
 
-    for _, bounds in agi_long.iterrows():
-        lower, upper = bounds.AGI_LOWER_BOUND, bounds.AGI_UPPER_BOUND
+    for _, row in agi_long.iterrows():
+        lower, upper, variable = (
+            row.AGI_LOWER_BOUND,
+            row.AGI_UPPER_BOUND,
+            row.VARIABLE,
+        )
         band = get_agi_band_label(lower, upper)
 
         in_band = (agi > lower) & (agi <= upper)
-        if agi_targets["VARIABLE"].iat[0] is not None:
-            matrix[f"agi/{agi_targets['VARIABLE']}/{band}"] = sim.map_result(
+        if variable is not None:
+            matrix[f"agi/{variable}/{band}"] = sim.map_result(
                 in_band, "tax_unit", "household"
             )
         else:
-            matrix[f"agi/{band}"] = sim.map_result(in_band, "tax_unit", "household")
+            matrix[f"agi/{band}"] = sim.map_result(
+                in_band, "tax_unit", "household"
+            )
 
     matrix["state_code"] = state_code
 
@@ -145,11 +151,12 @@ def create_target_matrix(ages, agi_targets):
         )
     )
 
-    for band, df_band in agi_with_labels.groupby("band"):
-        if agi_targets["VARIABLE"].iat[0] is not None:
-            y[f"agi/{agi_targets['VARIABLE']}/{band}"] = df_band["VALUE"].values
-        else: 
-            y[f"agi/{band}"] = df_band["VALUE"].values
+    for variable, df_var in agi_with_labels.groupby("VARIABLE"):
+        for band, df_band in df_var.groupby("band"):
+            if variable is not None:
+                y[f"agi/{variable}/{band}"] = df_band["VALUE"].values
+            else:
+                y[f"agi/{band}"] = df_band["VALUE"].values
 
     return y
 
@@ -311,7 +318,7 @@ def calibrate():
             weights: Shape [43500] - one weight per (district, household) pair
 
         Returns:
-            Shape [435*18] - flattened estimated targets for all districts and age bands
+            Shape [435*36] - flattened estimated targets for all districts and target variables (currently age, agi count, agi amount)
         """
         # Extract household and district indices (note the order!)
         household_indices = households_tensor[
