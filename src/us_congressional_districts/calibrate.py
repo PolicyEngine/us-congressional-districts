@@ -104,6 +104,7 @@ def create_district_metric_matrix(
     agi_long = (
         agi_targets[["AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VARIABLE", "IS_COUNT"]]
         .drop_duplicates()
+        .sort_values(["IS_COUNT", "VARIABLE", "AGI_LOWER_BOUND"])
     )
 
     for _, row in agi_long.iterrows():
@@ -150,13 +151,16 @@ def create_target_matrix(ages, agi_targets):
             axis=1,
         )
     )
+    agi_with_labels = agi_with_labels.sort_values(
+        ["IS_COUNT", "VARIABLE", "AGI_LOWER_BOUND"]
+    )
 
-    for variable, df_var in agi_with_labels.groupby("VARIABLE"):
-        for band, df_band in df_var.groupby("band"):
+    for variable, df_var in agi_with_labels.groupby("VARIABLE", sort=False):
+        for band, df_band in df_var.groupby("band", sort=False):
             if variable is not None:
-                y[f"agi/{variable}/{band}"] = df_band["VALUE"].values
+                y[f"soi/{variable}/{band}"] = df_band["VALUE"].values
             else:
-                y[f"agi/{band}"] = df_band["VALUE"].values
+                y[f"soi/{band}"] = df_band["VALUE"].values
 
     return y
 
@@ -286,6 +290,7 @@ def calibrate():
     targets_by_district = create_target_matrix(
         age_data_by_district, agi_data_by_district
     )
+
     count_districts, count_targets = targets_by_district.shape
     target_names = create_target_names(
         targets_by_district, target_district_names
