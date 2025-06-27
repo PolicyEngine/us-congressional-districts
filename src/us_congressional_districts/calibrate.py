@@ -49,7 +49,7 @@ for row in mapping_df.itertuples(index=False):
 assert np.allclose(mapping_matrix.sum(axis=1), 1.0), "Row totals aren't 1.0"
 
 
-def get_dataset(dataset: str = "cps_2023", time_period=2023) -> pd.DataFrame:
+def get_dataset(dataset: str = "enhanced_cps_2024", time_period=2024) -> pd.DataFrame:
     """
     Get the dataset from the huggingface hub.
     """
@@ -76,7 +76,7 @@ def create_district_metric_matrix(
     dataset: str = None,
     ages: pd.DataFrame = pd.DataFrame(),
     soi_targets: pd.DataFrame = pd.DataFrame(),
-    time_period: int = 2023,
+    time_period: int = 2024,
 ):
     ages_count_matrix = ages.iloc[:, 2:]
     age_ranges = list(ages_count_matrix.columns)
@@ -134,7 +134,7 @@ def create_district_metric_matrix(
             metric = sim.map_result(mask, "tax_unit", "household")  # COUNT
         else:
             col = f"soi/{var}/{band}"
-            # Get the base variable name (without _count or _amount suffix)
+            # Get the base variable name (without _count or _amount suffix) (can use regex)
             base_var = var.replace("_count", "").replace("_amount", "")
 
             # Check if this variable needs to be mapped from a different entity level
@@ -207,7 +207,7 @@ def create_target_matrix(ages, soi_targets):
 def create_state_mask(
     dataset: str = None,
     districts: pd.Series = pd.Series(["5001800US5600"]),
-    time_period: int = 2023,
+    time_period: int = 2024,
 ) -> np.ndarray:
     """
     Create a matrix R to accompany the loss matrix M s.t. (W x M) x R = Y_
@@ -320,10 +320,10 @@ def calibrate():
     target_district_names = age_data_by_district.GEO_NAME
 
     data_by_household = create_district_metric_matrix(
-        dataset=get_dataset("cps_2023", 2023),
+        dataset=get_dataset("enhanced_cps_2024", 2024),
         ages=age_data_by_district,
         soi_targets=agi_data_by_district,
-        time_period=2023,
+        time_period=2024,
     )
 
     targets_by_district = create_target_matrix(
