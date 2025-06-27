@@ -193,7 +193,84 @@ def process_snap_data(year):
         adjusted_dfs['District'][['GEO_ID', 'overall']]
     ]).rename({"GEO_ID": "geography_id", "overall": "value"}, axis=1)
  
-    clean_out.to_csv(os.path.join(folder_path, "part-001.csv"), index=False)     
+    clean_out.to_csv(os.path.join(folder_path, "part-001.csv"), index=False)
+
+
+def reformat_cleaned_data():
+    """Temporary conversion function"""
+    benefits_dir = Path(get_data_directory() / 'input' / 'benefits')
+   
+    snap_filepath = Path(
+        get_data_directory(),
+        "targets",
+        "edition=cleaned",
+        "base_period=2023",
+        "reference_period=2023",
+        "variable=snap_households",
+        "part-001.csv"
+    )
+    snap_data = pd.read_csv(snap_filepath)
+    geo_hierarchies = pd.read_csv(Path(get_data_directory(), 'meta', 'geo_hierarchies.csv'))
+    
+    # Use Type II SCD to Filter geo_hierarchies for the year 2023
+    geo_hierarchies['start_date'] = pd.to_datetime(geo_hierarchies['start_date'])
+    geo_hierarchies['end_date'] = pd.to_datetime(geo_hierarchies['end_date'])
+    geo_hierarchies_2023 = geo_hierarchies[
+        (geo_hierarchies['start_date'] <= '2023-01-01') &
+        (geo_hierarchies['end_date'] >= '2023-01-01')
+    ]
+    
+    merged_data = pd.merge(snap_data, geo_hierarchies_2023, left_on='geography_id', right_on='geography_id')
+    
+    def create_cleaned_df(data, geo_name_map=None, geo_name_prefix=''):
+        df = pd.DataFrame()
+        df['GEO_ID'] = data['geography_id']
+        if geo_name_map:
+            df['GEO_NAME'] = data['geography_id'].map(geo_name_map)
+        elif 'geography_name' in data.columns:
+            df['GEO_NAME'] = data['geography_name']
+        else:
+            df['GEO_NAME'] = ''
+    
+        df['AGI_LOWER_BOUND'] = ''
+        df['AGI_UPPER_BOUND'] = ''
+        df['VALUE'] = data['value']
+        df['IS_COUNT'] = 1
+        df['VARIABLE'] = 'snap_households'
+        return df
+    
+    # National data
+    national_data = merged_data[merged_data['geography_type'] == 'nation'].copy()
+    national_data['geography_name'] = 'US'
+    cleaned_national = create_cleaned_df(national_data)
+    cleaned_national.to_csv(Path(get_data_directory(), 'input', 'benefits', 'cleaned_snap_national.csv'), index=False)
+    
+    # State data
+    state_data = merged_data[merged_data['geography_type'] == 'state-equivalent'].copy()
+    # TODO: fix this redundancy if this becomes permanenent
+    state_fips_map = {
+        '01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA', '08': 'CO', '09': 'CT', '10': 'DE', '11': 'DC',
+        '12': 'FL', '13': 'GA', '15': 'HI', '16': 'ID', '17': 'IL', '18': 'IN', '19': 'IA', '20': 'KS', '21': 'KY',
+        '22': 'LA', '23': 'ME', '24': 'MD', '25': 'MA', '26': 'MI', '27': 'MN', '28': 'MS', '29': 'MO', '30': 'MT',
+        '31': 'NE', '32': 'NV', '33': 'NH', '34': 'NJ', '35': 'NM', '36': 'NY', '37': 'NC', '38': 'ND', '39': 'OH',
+        '40': 'OK', '41': 'OR', '42': 'PA', '44': 'RI', '45': 'SC', '46': 'SD', '47': 'TN', '48': 'TX', '49': 'UT',
+        '50': 'VT', '51': 'VA', '53': 'WA', '54': 'WV', '55': 'WI', '56': 'WY'
+    }
+    state_data['state_fips'] = state_data['geography_id'].str[-2:]
+    state_data['geography_name'] = state_data['state_fips'].map(state_fips_map)
+    cleaned_state = create_cleaned_df(state_data)
+    cleaned_state.to_csv(Path('us-congressional-districts/data/input/benefits/cleaned_snap_state.csv', index=False)
+    cleaned_state.to_csv(Path(get_data_directory(), 'input', 'benefits', 'cleaned_snap_state.csv'), index=False)
+    
+    # District data
+    district_data = merged_data[merged_data['geography_type'] == 'district'].copy()
+    district_data['state_fips'] = district_data['geography_id'].str[9:11]
+    district_data['district_num'] = district_data['geography_id'].str[11:]
+    district_data['geography_name'] = district_data['state_fips'].map(state_fips_map) + ' - District ' + district_data['district_num']
+    cleaned_district = create_cleaned_df(district_data)
+    cleaned_district["VALUE"] = cleaned_district["VALUE"].round().astype(int)
+    cleaned_district.to_csv(Path(get_data_directory(), 'input', 'benefits', 'cleaned_snap_district.csv'), index=False)
+
 
 
 if __name__ == "__main__":
