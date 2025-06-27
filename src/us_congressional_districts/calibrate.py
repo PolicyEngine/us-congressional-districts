@@ -102,9 +102,7 @@ def create_district_metric_matrix(
         )
 
     agi_long = (
-        agi_targets[
-            ["AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VARIABLE", "IS_COUNT"]
-        ]
+        agi_targets[["AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VARIABLE", "IS_COUNT"]]
         .drop_duplicates()
         .sort_values(["IS_COUNT", "VARIABLE", "AGI_LOWER_BOUND"])
     )
@@ -112,19 +110,17 @@ def create_district_metric_matrix(
     for _, row in agi_long.iterrows():
         lower, upper = row.AGI_LOWER_BOUND, row.AGI_UPPER_BOUND
         var = row.VARIABLE
-        is_count = row.IS_COUNT  # 1 → True, 0 → False
+        is_count = row.IS_COUNT          # 1 → True, 0 → False
         band = get_agi_band_label(lower, upper)
 
         mask = (agi > lower) & (agi <= upper)
 
         if is_count:
             col = f"soi/{var}/{band}"
-            metric = sim.map_result(mask, "tax_unit", "household")  # COUNT
+            metric = sim.map_result(mask, "tax_unit", "household") # COUNT
         else:
             col = f"soi/{var}/{band}"
-            metric = sim.map_result(
-                agi * mask, "tax_unit", "household"
-            )  # SUM $
+            metric = sim.map_result(agi * mask, "tax_unit", "household") # SUM $
 
         matrix[col] = metric
 
@@ -367,11 +363,12 @@ def calibrate():
         weights=weights,
         target_names=target_names,
         estimate_function=estimate_targets,
-        epochs=512,
+        epochs=256,
         learning_rate=0.2,
     )
 
     calibration.calibrate()
+    calibration.performance_df.to_csv("calibration_log.csv", index=False)
 
 
 if __name__ == "__main__":
