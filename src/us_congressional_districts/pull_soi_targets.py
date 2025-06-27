@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from typing import Optional, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,6 @@ from us_congressional_districts.utils import (
 
 
 """Utilities to pull AGI targets from the IRS SOI data files."""
-
 
 SOI_COLUMNS = [
     "Under $1",
@@ -28,7 +27,6 @@ SOI_COLUMNS = [
 
 AGI_STUB_TO_BAND = {i + 1: band for i, band in enumerate(SOI_COLUMNS)}
 
-
 AGI_BOUNDS = {
     "Under $1": (-np.inf, 1),
     "$1 under $10,000": (1, 10_000),
@@ -42,6 +40,14 @@ AGI_BOUNDS = {
 }
 
 NON_VOTING_STATES = {"US", "AS", "GU", "MP", "PR", "VI", "DC", "OA"}
+
+# after skipping the first 7 rows, the national SOI file has targets as row indices: 
+NATIONAL_VARIABLES = {"adjusted_gross_income_count": 0,
+                     "adjusted_gross_income_amount": 17}
+
+# the state and district SOI file have targets as column names:
+GEOGRAPHY_VARIABLES = {"adjusted_gross_income_count": "N1",
+                     "adjusted_gross_income_amount": "A00100"}
 
 
 def get_code_name_map() -> dict:
@@ -63,7 +69,7 @@ code_to_name = get_code_name_map()
 
 
 def pull_national_soi_variable(
-    soi_variable_row: int,  # the national SOI xlsx file has a row for each target variable
+    soi_variable_ident: int,  # the national SOI xlsx file has a row for each target variable
     variable_name: Union[str, None],
     is_count: bool,
     national_df: Optional[pd.DataFrame] = None,
@@ -75,13 +81,13 @@ def pull_national_soi_variable(
 
     assert (
         np.abs(
-            df.iloc[soi_variable_row, 1]
-            - df.iloc[soi_variable_row, 2:12].sum()
+            df.iloc[soi_variable_ident, 1]
+            - df.iloc[soi_variable_ident, 2:12].sum()
         )
         < 100
     ), "Row 0 doesn't add up — check the file."
 
-    agi_values = df.iloc[soi_variable_row, 2:12].astype(int).to_numpy()
+    agi_values = df.iloc[soi_variable_ident, 2:12].astype(int).to_numpy()
     agi_values = np.concatenate(
         [agi_values[:8], [agi_values[8] + agi_values[9]]]
     )
@@ -107,7 +113,7 @@ def pull_national_soi_variable(
     result["IS_COUNT"] = int(is_count)
     result["VARIABLE"] = variable_name
 
-    np.where(result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"])
+    result["VALUE"] = np.where(result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"])
 
     if national_df is not None:
         # If a DataFrame is passed, we append the new data to it.
@@ -118,7 +124,7 @@ def pull_national_soi_variable(
 
 
 def pull_state_soi_variable(
-    soi_variable_col: str,  # the state SOI csv file has a column for each target variable
+    soi_variable_ident: str,  # the state SOI csv file has a column for each target variable
     variable_name: Union[str, None],
     is_count: bool,
     state_df: Optional[pd.DataFrame] = None,
@@ -131,7 +137,7 @@ def pull_state_soi_variable(
     merged = (
         df[df["AGI_STUB"].isin([9, 10])]
         .groupby("STATE", as_index=False)
-        .agg({soi_variable_col: "sum"})
+        .agg({soi_variable_ident: "sum"})
         .assign(AGI_STUB=9)
     )
     df = df[~df["AGI_STUB"].isin([9, 10])]
@@ -146,9 +152,9 @@ def pull_state_soi_variable(
     result = (
         df.loc[
             ~df["STATE"].isin(NON_VOTING_STATES),  # drop territories + DC
-            ["GEO_ID", "agi_bracket", soi_variable_col],
+            ["GEO_ID", "agi_bracket", soi_variable_ident],
         ]
-        .rename(columns={soi_variable_col: "VALUE"})
+        .rename(columns={soi_variable_ident: "VALUE"})
         .reset_index(drop=True)
     )
 
@@ -167,7 +173,7 @@ def pull_state_soi_variable(
     result["IS_COUNT"] = int(is_count)
     result["VARIABLE"] = variable_name
 
-    np.where(result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"])
+    result["VALUE"] = np.where(result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"])
 
     if state_df is not None:
         # If a DataFrame is passed, we append the new data to it.
@@ -178,7 +184,7 @@ def pull_state_soi_variable(
 
 
 def pull_district_soi_variable(
-    soi_variable_col: str,  # the district SOI csv file has a column for each target variable
+    soi_variable_ident: str,  # the district SOI csv file has a column for each target variable
     variable_name: Union[str, None],
     is_count: bool,
     district_df: Optional[pd.DataFrame] = None,
@@ -210,8 +216,8 @@ def pull_district_soi_variable(
 
     df["agi_bracket"] = df["agi_stub"].map(AGI_STUB_TO_BAND)
     result = df[
-        ["GEO_ID", "CONG_DISTRICT", "STATE", "agi_bracket", soi_variable_col]
-    ].rename(columns={soi_variable_col: "VALUE"})
+        ["GEO_ID", "CONG_DISTRICT", "STATE", "agi_bracket", soi_variable_ident]
+    ].rename(columns={soi_variable_ident: "VALUE"})
 
     result["AGI_LOWER_BOUND"] = result["agi_bracket"].map(
         lambda b: AGI_BOUNDS[b][0]
@@ -228,7 +234,7 @@ def pull_district_soi_variable(
     result["IS_COUNT"] = int(is_count)
     result["VARIABLE"] = variable_name
 
-    np.where(result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"])
+    result["VALUE"] = np.where(result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"])
 
     if district_df is not None:
         # If a DataFrame is passed, we append the new data to it.
@@ -238,50 +244,38 @@ def pull_district_soi_variable(
     return result
 
 
+def create_targets(
+        var_indices: dict[str: Union[int, str]], 
+        variable_pull: Callable[..., pd.DataFrame]
+    ) -> pd.DataFrame:
+    """Create a DataFrame with AGI targets."""
+    df = pd.DataFrame()
+    for variable, identifyer in var_indices.items():
+        variable_df = variable_pull(
+            soi_variable_ident=identifyer,
+            variable_name=variable.replace("count", "") if variable.endswith("count") else variable,
+            is_count=1 if variable.endswith("count") else 0,
+        )
+        df = pd.concat([df, variable_df], ignore_index=True)
+    return df
+
+
 def main() -> None:
-    national_agi_count_df = pull_national_soi_variable(
-        soi_variable_row=0,  # Row 0 is the total number of returns (count) for AGI brackets
-        variable_name="adjusted_gross_income_count",
-        is_count=True,
-    )
-    national_df = pull_national_soi_variable(
-        soi_variable_row=17,  # Row 17 is the total Adjusted Gross Income (amount) for AGI brackets
-        variable_name="adjusted_gross_income_amount",
-        is_count=False,
-        national_df=national_agi_count_df,
-    )
     out_dir = Path(get_data_directory()) / "input" / "soi"
     out_dir.mkdir(parents=True, exist_ok=True)
+    national_df = create_targets(
+        NATIONAL_VARIABLES,
+        pull_national_soi_variable)
     national_df.to_csv(out_dir / "agi_national.csv", index=False)
 
-    state_agi_count_df = pull_state_soi_variable(
-        soi_variable_col="N1",  # Column "N1" contains the total number of returns (count) for AGI brackets
-        variable_name="adjusted_gross_income_count",
-        is_count=True,
-    )
-    state_df = pull_state_soi_variable(
-        soi_variable_col="A00100",  # Column "A00100" contains the the total Adjusted Gross Income (amount) for AGI brackets
-        variable_name="adjusted_gross_income_amount",
-        is_count=False,
-        state_df=state_agi_count_df,
-    )
-    out_dir = Path(get_data_directory()) / "input" / "soi"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    state_df = create_targets(
+        GEOGRAPHY_VARIABLES,
+        pull_state_soi_variable)
     state_df.to_csv(out_dir / "agi_state.csv", index=False)
 
-    district_agi_count_df = pull_district_soi_variable(
-        soi_variable_col="N1",  # Column "N1" contains the total number of returns (count) for AGI brackets
-        variable_name="adjusted_gross_income_count",
-        is_count=True,
-    )
-    district_df = pull_district_soi_variable(
-        soi_variable_col="A00100",  # Column "A00100" contains the the total Adjusted Gross Income (amount) for AGI brackets
-        variable_name="adjusted_gross_income_amount",
-        is_count=False,
-        district_df=district_agi_count_df,
-    )
-    out_dir = Path(get_data_directory()) / "input" / "soi"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    district_df = create_targets(
+        GEOGRAPHY_VARIABLES,
+        pull_district_soi_variable)
     district_df.to_csv(out_dir / "agi_district.csv", index=False)
 
 
