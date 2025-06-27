@@ -101,27 +101,27 @@ def create_district_metric_matrix(
             in_age_band, "person", "household"
         )
 
-    agi_long = agi_targets[
-        ["AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VARIABLE"]
-    ].drop_duplicates()  # drop duplicates to avoid redundancy calculating the same band multiple times
+    agi_long = (
+        agi_targets[["AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VARIABLE", "IS_COUNT"]]
+        .drop_duplicates()
+    )
 
     for _, row in agi_long.iterrows():
-        lower, upper, variable = (
-            row.AGI_LOWER_BOUND,
-            row.AGI_UPPER_BOUND,
-            row.VARIABLE,
-        )
+        lower, upper = row.AGI_LOWER_BOUND, row.AGI_UPPER_BOUND
+        var = row.VARIABLE
+        is_count = row.IS_COUNT          # 1 → True, 0 → False
         band = get_agi_band_label(lower, upper)
 
-        in_band = (agi > lower) & (agi <= upper)
-        if variable is not None:
-            matrix[f"agi/{variable}/{band}"] = sim.map_result(
-                in_band, "tax_unit", "household"
-            )
+        mask = (agi > lower) & (agi <= upper)
+
+        if is_count:
+            col = f"soi/{var}/{band}"
+            metric = sim.map_result(mask, "tax_unit", "household") # COUNT
         else:
-            matrix[f"agi/{band}"] = sim.map_result(
-                in_band, "tax_unit", "household"
-            )
+            col = f"soi/{var}/{band}"
+            metric = sim.map_result(agi * mask, "tax_unit", "household") # SUM $
+
+        matrix[col] = metric
 
     matrix["state_code"] = state_code
 

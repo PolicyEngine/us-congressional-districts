@@ -240,7 +240,7 @@ def main() -> None:
     )
     national_df = pull_national_soi_variable(
         soi_variable_row=17,  # Row 17 is the total Adjusted Gross Income (amount) for AGI brackets
-        variable_name="adjusted_gross_income",
+        variable_name="adjusted_gross_income_amount",
         is_count=False,
         national_df=national_agi_count_df,
     )
@@ -255,7 +255,7 @@ def main() -> None:
     )
     state_df = pull_state_soi_variable(
         soi_variable_col="A00100",  # Column "A00100" contains the the total Adjusted Gross Income (amount) for AGI brackets
-        variable_name="adjusted_gross_income",
+        variable_name="adjusted_gross_income_amount",
         is_count=False,
         state_df=state_agi_count_df,
     )
@@ -270,7 +270,7 @@ def main() -> None:
     )
     district_df = pull_district_soi_variable(
         soi_variable_col="A00100",  # Column "A00100" contains the the total Adjusted Gross Income (amount) for AGI brackets
-        variable_name="adjusted_gross_income",
+        variable_name="adjusted_gross_income_amount",
         is_count=False,
         district_df=district_agi_count_df,
     )
