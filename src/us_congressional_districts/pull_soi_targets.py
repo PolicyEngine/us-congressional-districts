@@ -41,13 +41,17 @@ AGI_BOUNDS = {
 
 NON_VOTING_STATES = {"US", "AS", "GU", "MP", "PR", "VI", "DC", "OA"}
 
-# after skipping the first 7 rows, the national SOI file has targets as row indices: 
-NATIONAL_VARIABLES = {"adjusted_gross_income_count": 0,
-                     "adjusted_gross_income_amount": 17}
+# after skipping the first 7 rows, the national SOI file has targets as row indices:
+NATIONAL_VARIABLES = {
+    "adjusted_gross_income_count": 0,
+    "adjusted_gross_income_amount": 17,
+}
 
 # the state and district SOI file have targets as column names:
-GEOGRAPHY_VARIABLES = {"adjusted_gross_income_count": "N1",
-                     "adjusted_gross_income_amount": "A00100"}
+GEOGRAPHY_VARIABLES = {
+    "adjusted_gross_income_count": "N1",
+    "adjusted_gross_income_amount": "A00100",
+}
 
 
 def get_code_name_map() -> dict:
@@ -113,7 +117,9 @@ def pull_national_soi_variable(
     result["IS_COUNT"] = int(is_count)
     result["VARIABLE"] = variable_name
 
-    result["VALUE"] = np.where(result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"])
+    result["VALUE"] = np.where(
+        result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"]
+    )
 
     if national_df is not None:
         # If a DataFrame is passed, we append the new data to it.
@@ -173,7 +179,9 @@ def pull_state_soi_variable(
     result["IS_COUNT"] = int(is_count)
     result["VARIABLE"] = variable_name
 
-    result["VALUE"] = np.where(result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"])
+    result["VALUE"] = np.where(
+        result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"]
+    )
 
     if state_df is not None:
         # If a DataFrame is passed, we append the new data to it.
@@ -234,7 +242,9 @@ def pull_district_soi_variable(
     result["IS_COUNT"] = int(is_count)
     result["VARIABLE"] = variable_name
 
-    result["VALUE"] = np.where(result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"])
+    result["VALUE"] = np.where(
+        result["IS_COUNT"] == 0, result["VALUE"] * 1_000, result["VALUE"]
+    )
 
     if district_df is not None:
         # If a DataFrame is passed, we append the new data to it.
@@ -245,15 +255,19 @@ def pull_district_soi_variable(
 
 
 def create_targets(
-        var_indices: dict[str: Union[int, str]], 
-        variable_pull: Callable[..., pd.DataFrame]
-    ) -> pd.DataFrame:
+    var_indices: dict[str : Union[int, str]],
+    variable_pull: Callable[..., pd.DataFrame],
+) -> pd.DataFrame:
     """Create a DataFrame with AGI targets."""
     df = pd.DataFrame()
     for variable, identifyer in var_indices.items():
         variable_df = variable_pull(
             soi_variable_ident=identifyer,
-            variable_name=variable.replace("count", "") if variable.endswith("count") else variable,
+            variable_name=(
+                variable.replace("count", "")
+                if variable.endswith("count")
+                else variable
+            ),
             is_count=1 if variable.endswith("count") else 0,
         )
         df = pd.concat([df, variable_df], ignore_index=True)
@@ -264,18 +278,16 @@ def main() -> None:
     out_dir = Path(get_data_directory()) / "input" / "soi"
     out_dir.mkdir(parents=True, exist_ok=True)
     national_df = create_targets(
-        NATIONAL_VARIABLES,
-        pull_national_soi_variable)
+        NATIONAL_VARIABLES, pull_national_soi_variable
+    )
     national_df.to_csv(out_dir / "agi_national.csv", index=False)
 
-    state_df = create_targets(
-        GEOGRAPHY_VARIABLES,
-        pull_state_soi_variable)
+    state_df = create_targets(GEOGRAPHY_VARIABLES, pull_state_soi_variable)
     state_df.to_csv(out_dir / "agi_state.csv", index=False)
 
     district_df = create_targets(
-        GEOGRAPHY_VARIABLES,
-        pull_district_soi_variable)
+        GEOGRAPHY_VARIABLES, pull_district_soi_variable
+    )
     district_df.to_csv(out_dir / "agi_district.csv", index=False)
 
 
