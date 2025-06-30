@@ -52,10 +52,10 @@ NATIONAL_VARIABLES = {
     "employment_income/amount": 21,
     "self_employment_income/count": 32,
     "self_employment_income/amount": 33,
-    # "quallified_dividend_income/count": 28,
-    # "qualified_dividend_income/amount": 29,
-    # "taxable_interest_income/count": 22,
-    # "taxable_interest_income/amount": 23,
+    "qualified_dividend_income/count": 28,
+    "qualified_dividend_income/amount": 29,
+    "taxable_interest_income/count": 22,
+    "taxable_interest_income/amount": 23,
 }
 
 # the state and district SOI file have targets as column names:
@@ -66,10 +66,10 @@ GEOGRAPHY_VARIABLES = {
     "employment_income/amount": "A00200",
     "self_employment_income/count": "N00900",
     "self_employment_income/amount": "A00900",
-    # "qualified_dividend_income/count": "N00650",
-    # "qualified_dividend_income/amount": "A00650",
-    # "taxable_interest_income/count": "N00300",
-    # "taxable_interest_income/amount": "A00300",
+    "qualified_dividend_income/count": "N00650",
+    "qualified_dividend_income/amount": "A00650",
+    "taxable_interest_income/count": "N00300",
+    "taxable_interest_income/amount": "A00300",
 }
 
 

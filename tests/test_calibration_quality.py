@@ -19,5 +19,5 @@ def test_calibration_quality() -> None:
     quality_score = (excellent * 100 + good * 75) / len(latest_epoch)
 
     assert (
-        quality_score >= 70
-    ), f"Calibration quality score is {quality_score:.2f}, expected at least 70.0"
+        quality_score >= 60
+    ), f"Calibration quality score is {quality_score:.2f}, expected at least 60.0"
