@@ -391,6 +391,8 @@ def calibrate():
     calibration.calibrate()
     calibration.performance_df.to_csv("calibration_log.csv", index=False)
 
+    return calibration.performance_df
+
 
 if __name__ == "__main__":
     calibrate()
