@@ -11,3 +11,5 @@ data/output/**
 # Virtual environments
 .venv
 **/_build/
+
+/calibration_log.csv
