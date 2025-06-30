@@ -384,12 +384,20 @@ def calibrate():
         weights=weights,
         target_names=target_names,
         estimate_function=estimate_targets,
-        epochs=512,
-        learning_rate=0.2,
-        noise_level=0.0
+        epochs=256,
+        learning_rate=0.2
     )
 
     calibration.calibrate()
+
+    # Checking the standard deviation of the weights
+    final_weights = calibration.weights
+    print("Max weight:", np.max(final_weights))
+    print("Min weight:", np.min(final_weights))
+    print("Mean weight:", np.mean(final_weights))
+    print("Std:", np.std(final_weights))
+
+
     calibration.performance_df.to_csv("calibration_log.csv", index=False)
 
     return calibration.performance_df
