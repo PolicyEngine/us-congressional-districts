@@ -38,7 +38,6 @@ assert (
 old_index = {c: i for i, c in enumerate(old_codes)}
 new_index = {c: j for j, c in enumerate(new_codes)}
 
-# 3)  Allocate the empty matrix and populate it row-by-row ──────────────────
 mapping_matrix = np.zeros((435, 435), dtype=float)
 
 for row in mapping_df.itertuples(index=False):
@@ -65,9 +64,9 @@ def get_dataset(dataset: str = "cps_2023", time_period=2023) -> pd.DataFrame:
 def get_agi_band_label(lower: float, upper: float) -> str:
     """Get the label for the AGI band based on lower and upper bounds."""
     if lower <= 0:
-        return f"under_{int(upper)}"
+        return f"-inf_{int(upper)}"
     elif np.isposinf(upper):
-        return f"{int(lower)}_plus"
+        return f"{int(lower)}_inf"
     else:
         return f"{int(lower)}_{int(upper)}"
 
@@ -88,7 +87,7 @@ def create_district_metric_matrix(
 
     soi_target_variables = (
         soi_targets["VARIABLE"]
-        .str.replace(r"_(count|amount)", "", regex=True)
+        .str.replace(r"/(count|amount)", "", regex=True)
         .unique()
     )
 
@@ -130,12 +129,12 @@ def create_district_metric_matrix(
         )
 
         if is_count:
-            col = f"soi/{var}/{band}"
+            col = f"soi/{var}/count/{band}"
             metric = sim.map_result(mask, "tax_unit", "household")  # COUNT
         else:
-            col = f"soi/{var}/{band}"
-            # Get the base variable name (without _count or _amount suffix)
-            base_var = var.replace("_count", "").replace("_amount", "")
+            col = f"soi/{var}/amount/{band}"
+            # Get the base variable name (without /count or /amount suffix)
+            base_var = var.replace("/count", "").replace("/amount", "")
 
             # Check if this variable needs to be mapped from a different entity level
             if base_var in sim_calculations:
@@ -199,7 +198,7 @@ def create_target_matrix(ages, soi_targets):
 
     for variable, df_var in agi_with_labels.groupby("VARIABLE", sort=False):
         for band, df_band in df_var.groupby("band", sort=False):
-            y[f"soi/{variable}/{band}"] = df_band["VALUE"].values
+            y[f"soi/{variable}/count/{band}"] = df_band["VALUE"].values
 
     return y
 
