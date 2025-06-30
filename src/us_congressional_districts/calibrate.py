@@ -9,6 +9,7 @@ from huggingface_hub import hf_hub_download
 
 from policyengine_core.data import Dataset
 from policyengine_us import Microsimulation
+from policyengine_us.system import system
 from us_congressional_districts.utils import get_data_directory
 import pandas as pd
 import numpy as np
@@ -94,7 +95,14 @@ def create_district_metric_matrix(
     sim_calculations = {}
     for variable in soi_target_variables:
         values = sim.calculate(variable).values
-        sim_calculations[variable] = values
+        values_entity = system.variables[variable].entity.key
+        if values_entity == "tax_unit":
+            sim_calculations[variable] = values
+        else:
+            # ensure all variables are mapped to household level (calibration happens for household weights)
+            sim_calculations[variable] = sim.map_result(
+                values, values_entity, "tax_unit"
+            )
     state_code = sim.calculate("state_code").values
 
     matrix = pd.DataFrame()
@@ -120,9 +128,10 @@ def create_district_metric_matrix(
 
     for _, row in agi_long.iterrows():
         lower, upper = row.AGI_LOWER_BOUND, row.AGI_UPPER_BOUND
-        var = row.VARIABLE
-        is_count = row.IS_COUNT  # 1 → True, 0 → False
         band = get_agi_band_label(lower, upper)
+        var = row.VARIABLE.replace("/count", "").replace("/amount", "")
+        is_count = row.IS_COUNT  # 1 → True, 0 → False
+        var_values = sim_calculations[var]
 
         mask = (sim_calculations["adjusted_gross_income"] > lower) & (
             sim_calculations["adjusted_gross_income"] <= upper
@@ -130,38 +139,12 @@ def create_district_metric_matrix(
 
         if is_count:
             col = f"soi/{var}/count/{band}"
-            metric = sim.map_result(mask, "tax_unit", "household")  # COUNT
+            metric = mask * (var_values > 0).astype(float)  # COUNT
+            metric = sim.map_result(metric, "tax_unit", "household")
         else:
             col = f"soi/{var}/amount/{band}"
-            # Get the base variable name (without /count or /amount suffix)
-            base_var = var.replace("/count", "").replace("/amount", "")
-
-            # Check if this variable needs to be mapped from a different entity level
-            if base_var in sim_calculations:
-                var_values = sim_calculations[base_var]
-
-                # If the variable and mask have different shapes, we need to handle the entity mapping
-                if var_values.shape != mask.shape:
-                    # Map the variable values to the same entity level as the mask (tax_unit)
-                    if base_var == "employment_income":
-                        # employment_income is person-level, map to tax_unit level first
-                        var_values_mapped = sim.map_result(
-                            var_values, "person", "tax_unit"
-                        )
-                    else:
-                        var_values_mapped = var_values
-
-                    metric = sim.map_result(
-                        var_values_mapped * mask,
-                        "tax_unit",
-                        "household",
-                    )
-                else:
-                    metric = sim.map_result(
-                        var_values * mask,
-                        "tax_unit",
-                        "household",
-                    )
+            metric = var_values * mask  # AMOUNT
+            metric = sim.map_result(metric, "tax_unit", "household")
 
         matrix[col] = metric
 
@@ -344,7 +327,7 @@ def calibrate():
     device = "mps:0" if torch.backends.mps.is_available() else "cpu"
 
     data_by_household_tensor = torch.tensor(
-        data_by_household.drop(columns=["state_code"]).values,
+        data_by_household.drop(columns=["state_code"]).astype(float).values,
         dtype=torch.float32,
         device=device,
     )
