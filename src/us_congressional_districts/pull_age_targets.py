@@ -4,6 +4,60 @@ from pathlib import Path
 
 from us_congressional_districts.utils import get_data_directory
 
+STATE_NAME_TO_ABBREV = {
+    "Alabama": "AL",
+    "Alabama": "AL",
+    "Alaska": "AK",
+    "Arizona": "AZ",
+    "Arkansas": "AR",
+    "California": "CA",
+    "Colorado": "CO",
+    "Connecticut": "CT",
+    "Delaware": "DE",
+    "Florida": "FL",
+    "Georgia": "GA",
+    "Hawaii": "HI",
+    "Idaho": "ID",
+    "Illinois": "IL",
+    "Indiana": "IN",
+    "Iowa": "IA",
+    "Kansas": "KS",
+    "Kentucky": "KY",
+    "Louisiana": "LA",
+    "Maine": "ME",
+    "Maryland": "MD",
+    "Massachusetts": "MA",
+    "Michigan": "MI",
+    "Minnesota": "MN",
+    "Mississippi": "MS",
+    "Missouri": "MO",
+    "Montana": "MT",
+    "Nebraska": "NE",
+    "Nevada": "NV",
+    "New Hampshire": "NH",
+    "New Jersey": "NJ",
+    "New Mexico": "NM",
+    "New York": "NY",
+    "North Carolina": "NC",
+    "North Dakota": "ND",
+    "Ohio": "OH",
+    "Oklahoma": "OK",
+    "Oregon": "OR",
+    "Pennsylvania": "PA",
+    "Rhode Island": "RI",
+    "South Carolina": "SC",
+    "South Dakota": "SD",
+    "Tennessee": "TN",
+    "Texas": "TX",
+    "Utah": "UT",
+    "Vermont": "VT",
+    "Virginia": "VA",
+    "Washington": "WA",
+    "West Virginia": "WV",
+    "Wisconsin": "WI",
+    "Wyoming": "WY",
+}
+
 
 def pull_age_data(geo, year):
     base_url = (
@@ -100,15 +154,31 @@ def pull_age_data(geo, year):
     print(f"Ommitted {geo} geographies:\n\n{omitted_rows[['GEO_ID', 'NAME']]}")
 
     SAVE_DIR = Path(get_data_directory() / "input" / "demographics")
+    age_cols = list(label_to_short_name_mapping.values())
     if geo == "District":
         assert df_geos.shape[0] == 435
-        df_geos.to_csv(SAVE_DIR / "age_district.csv", index=False)
+        df_geos["GEO_NAME"] = df_geos["NAME"].apply(abbrev_name)
     elif geo == "State":
         assert df_geos.shape[0] == 50
-        df_geos.to_csv(SAVE_DIR / "age_state.csv", index=False)
+        df_geos["GEO_NAME"] = df_geos["NAME"].map(STATE_NAME_TO_ABBREV)
     elif geo == "National":
         assert df_geos.shape[0] == 1
-        df_geos.to_csv(SAVE_DIR / "age_national.csv", index=False)
+        df_geos["GEO_NAME"] = df_geos["NAME"].map({"United States": "US"})
+
+    out = df_geos[["GEO_ID", "GEO_NAME"] + age_cols]
+    filename = {
+        "District": "age_district.csv",
+        "State": "age_state.csv",
+        "National": "age_national.csv",
+    }[geo]
+    out.to_csv(SAVE_DIR / filename, index=False)
+
+
+def abbrev_name(name):
+    # 'Congressional District 1 (118th Congress), Alabama' -> AL-01
+    district_number = name.split("District ")[1].split(" ")[0]
+    state = STATE_NAME_TO_ABBREV[name.split(", ")[-1].strip()]
+    return f"{state}-{district_number.zfill(2)}".replace("(at", "01")
 
 
 if __name__ == "__main__":

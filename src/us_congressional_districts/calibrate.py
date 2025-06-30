@@ -10,6 +10,11 @@ from huggingface_hub import hf_hub_download
 from policyengine_core.data import Dataset
 from policyengine_us import Microsimulation
 from us_congressional_districts.utils import get_data_directory
+import pandas as pd
+import numpy as np
+import torch
+from microcalibrate import Calibration
+import logging
 
 # TODO (baogorek): A task is to use the mapping matrix
 from us_congressional_districts.district_mapping import (
@@ -43,8 +48,6 @@ for row in mapping_df.itertuples(index=False):
 
 assert np.allclose(mapping_matrix.sum(axis=1), 1.0), "Row totals aren't 1.0"
 
-print(mapping_matrix.shape)  # (435, 435)
-
 
 def get_dataset(dataset: str = "cps_2023", time_period=2023) -> pd.DataFrame:
     """
@@ -59,9 +62,20 @@ def get_dataset(dataset: str = "cps_2023", time_period=2023) -> pd.DataFrame:
     return Dataset.from_file(dataset_path, time_period=time_period)
 
 
+def get_agi_band_label(lower: float, upper: float) -> str:
+    """Get the label for the AGI band based on lower and upper bounds."""
+    if lower <= 0:
+        return f"under_{int(upper)}"
+    elif np.isposinf(upper):
+        return f"{int(lower)}_plus"
+    else:
+        return f"{int(lower)}_{int(upper)}"
+
+
 def create_district_metric_matrix(
     dataset: str = None,
     ages: pd.DataFrame = pd.DataFrame(),
+    soi_targets: pd.DataFrame = pd.DataFrame(),
     time_period: int = 2023,
 ):
     ages_count_matrix = ages.iloc[:, 2:]
@@ -71,6 +85,18 @@ def create_district_metric_matrix(
     sim.default_calculation_period = time_period
 
     age = sim.calculate("age").values
+
+    soi_target_variables = (
+        soi_targets["VARIABLE"]
+        .str.replace(r"_(count|amount)", "", regex=True)
+        .unique()
+    )
+
+    sim_calculations = {}
+    for variable in soi_target_variables:
+        values = sim.calculate(variable).values
+        sim_calculations[variable] = values
+    state_code = sim.calculate("state_code").values
 
     matrix = pd.DataFrame()
 
@@ -85,16 +111,74 @@ def create_district_metric_matrix(
             in_age_band, "person", "household"
         )
 
+    agi_long = (
+        soi_targets[
+            ["AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VARIABLE", "IS_COUNT"]
+        ]
+        .drop_duplicates()
+        .sort_values(["IS_COUNT", "VARIABLE", "AGI_LOWER_BOUND"])
+    )
+
+    for _, row in agi_long.iterrows():
+        lower, upper = row.AGI_LOWER_BOUND, row.AGI_UPPER_BOUND
+        var = row.VARIABLE
+        is_count = row.IS_COUNT  # 1 → True, 0 → False
+        band = get_agi_band_label(lower, upper)
+
+        mask = (sim_calculations["adjusted_gross_income"] > lower) & (
+            sim_calculations["adjusted_gross_income"] <= upper
+        )
+
+        if is_count:
+            col = f"soi/{var}/{band}"
+            metric = sim.map_result(mask, "tax_unit", "household")  # COUNT
+        else:
+            col = f"soi/{var}/{band}"
+            # Get the base variable name (without _count or _amount suffix)
+            base_var = var.replace("_count", "").replace("_amount", "")
+
+            # Check if this variable needs to be mapped from a different entity level
+            if base_var in sim_calculations:
+                var_values = sim_calculations[base_var]
+
+                # If the variable and mask have different shapes, we need to handle the entity mapping
+                if var_values.shape != mask.shape:
+                    # Map the variable values to the same entity level as the mask (tax_unit)
+                    if base_var == "employment_income":
+                        # employment_income is person-level, map to tax_unit level first
+                        var_values_mapped = sim.map_result(
+                            var_values, "person", "tax_unit"
+                        )
+                    else:
+                        var_values_mapped = var_values
+
+                    metric = sim.map_result(
+                        var_values_mapped * mask,
+                        "tax_unit",
+                        "household",
+                    )
+                else:
+                    metric = sim.map_result(
+                        var_values * mask,
+                        "tax_unit",
+                        "household",
+                    )
+
+        matrix[col] = metric
+
+    matrix["state_code"] = state_code
+
     return matrix
 
 
-def create_target_matrix(ages):
+def create_target_matrix(ages, soi_targets):
     """
     Create an aggregate target matrix for the appropriate geographic area
 
     Args:
-        ages: a data frame containing GEO_ID and NAME as the first two columns,
+        ages: a data frame containing GEO_ID and GEO_NAME as the first two columns,
           with target variables afterwards
+        soi_targets: a data frame containing GEO_ID and GEO_NAME as the first and last columns,
     """
     ages_count_matrix = ages.iloc[:, 2:]
     age_ranges = list(ages_count_matrix.columns)
@@ -102,6 +186,20 @@ def create_target_matrix(ages):
     y = pd.DataFrame()
     for age_range in age_ranges:
         y[f"age/{age_range}"] = ages[age_range]
+
+    agi_with_labels = soi_targets.assign(
+        band=lambda df: df.apply(
+            lambda r: get_agi_band_label(r.AGI_LOWER_BOUND, r.AGI_UPPER_BOUND),
+            axis=1,
+        )
+    )
+    agi_with_labels = agi_with_labels.sort_values(
+        ["IS_COUNT", "VARIABLE", "AGI_LOWER_BOUND"]
+    )
+
+    for variable, df_var in agi_with_labels.groupby("VARIABLE", sort=False):
+        for band, df_band in df_var.groupby("band", sort=False):
+            y[f"soi/{variable}/{band}"] = df_band["VALUE"].values
 
     return y
 
@@ -175,130 +273,141 @@ def create_district_to_state_matrix():
     return mapping_matrix
 
 
-def calibrate(epochs: int = 128, overwrite_ecps: bool = True):
-    # Target data sets (there's probably a better way to do this)
-    ages_district = pd.read_csv(
+def create_households(
+    sample_per_district: int,
+    data_by_household: pd.DataFrame,
+    age_data_by_district: pd.DataFrame,
+):
+    synth_households = pd.DataFrame()
+    state_codes = age_data_by_district.GEO_NAME.apply(lambda x: x[:2])
+    for district in age_data_by_district.index:
+        state_subset = data_by_household[
+            data_by_household["state_code"] == state_codes[district]
+        ]
+        households_in_district = pd.DataFrame(
+            {
+                "household_id": state_subset.sample(
+                    sample_per_district, replace=True
+                ).index.values,
+            }
+        )
+        households_in_district["district"] = district
+        synth_households = pd.concat(
+            [synth_households, households_in_district]
+        )
+
+    return synth_households
+
+
+def create_target_names(
+    targets_by_district: pd.DataFrame, district_names: np.ndarray
+) -> list:
+    targets = []
+    for district in district_names:
+        for age_band in targets_by_district.columns:
+            targets.append(f"{district}/{age_band}")
+    return np.array(targets)
+
+
+def calibrate():
+    age_data_by_district = pd.read_csv(
         get_data_directory() / "input" / "demographics" / "age_district.csv"
     )
-
-    ages_state = pd.read_csv(
-        get_data_directory() / "input" / "demographics" / "age_state.csv"
+    agi_data_by_district = pd.read_csv(
+        get_data_directory() / "input" / "soi" / "agi_district.csv"
     )
 
-    ages_national = pd.read_csv(
-        get_data_directory() / "input" / "demographics" / "age_national.csv"
+    target_district_names = age_data_by_district.GEO_NAME
+
+    data_by_household = create_district_metric_matrix(
+        dataset=get_dataset("cps_2023", 2023),
+        ages=age_data_by_district,
+        soi_targets=agi_data_by_district,
+        time_period=2023,
     )
 
-    dataset = get_dataset("cps_2023", 2023)
-    # the metrics matrix
-    matrix_ = create_district_metric_matrix(dataset, ages_district, 2023)
-    state_mask = create_state_mask(dataset, ages_district.GEO_ID, 2023)
-
-    y_ = create_target_matrix(ages_district)
-    y_national_ = create_target_matrix(ages_national)
-    y_state_ = create_target_matrix(ages_state)
-
-    sim = Microsimulation(dataset=dataset)
-    sim.default_calculation_period = 2023
-
-    COUNT_DISTRICTS = 435
-
-    original_weights = np.log(
-        sim.calculate("household_weight").values / COUNT_DISTRICTS
+    targets_by_district = create_target_matrix(
+        age_data_by_district, agi_data_by_district
     )
 
-    weights = torch.tensor(
-        np.ones((COUNT_DISTRICTS, len(original_weights))) * original_weights,
+    count_districts, count_targets = targets_by_district.shape
+    target_names = create_target_names(
+        targets_by_district, target_district_names
+    )
+
+    households = create_households(
+        sample_per_district=1_000,
+        data_by_household=data_by_household,
+        age_data_by_district=age_data_by_district,
+    )
+    weights = np.ones(len(households)) * (150e6 / len(households))
+
+    device = "mps:0" if torch.backends.mps.is_available() else "cpu"
+
+    data_by_household_tensor = torch.tensor(
+        data_by_household.drop(columns=["state_code"]).values,
         dtype=torch.float32,
-        requires_grad=True,
+        device=device,
+    )
+    households_tensor = torch.tensor(
+        households.values, dtype=torch.int64, device=device
+    )
+    targets = targets_by_district.values.flatten()
+
+    def estimate_targets(weights: torch.Tensor) -> torch.Tensor:
+        """
+        Estimate targets based on the weights.
+
+        Args:
+            weights: Shape [43500] - one weight per (district, household) pair
+
+        Returns:
+            Shape [435*36] - flattened estimated targets for all districts and target variables (currently age, agi count, agi amount)
+        """
+        # Extract household and district indices (note the order!)
+        household_indices = households_tensor[
+            :, 0
+        ]  # Shape: [435000] - actual household IDs
+        district_indices = households_tensor[
+            :, 1
+        ]  # Shape: [435000] - district indices (0-434)
+
+        # Get household data for the sampled households
+        sampled_household_data = data_by_household_tensor[household_indices]
+
+        # Apply weights: multiply each household's demographics by its weight
+        weighted_household_data = weights.unsqueeze(1) * sampled_household_data
+
+        # Sum weighted household data by district
+        estimated_targets = torch.zeros(
+            count_districts,
+            count_targets,
+            dtype=torch.float32,
+            device=weights.device,
+        )
+        estimated_targets.scatter_add_(
+            0,
+            district_indices.unsqueeze(1).expand(-1, count_targets),
+            weighted_household_data,
+        )
+
+        return estimated_targets.flatten()
+
+    # Set to warning logging level
+
+    logging.basicConfig(level=logging.ERROR)
+
+    calibration = Calibration(
+        targets=targets,
+        weights=weights,
+        target_names=target_names,
+        estimate_function=estimate_targets,
+        epochs=256,
+        learning_rate=0.2,
     )
 
-    # PyTorch metrics matrix
-    metrics = torch.tensor(matrix_.values, dtype=torch.float32)
-
-    # PyTorch targets for different geographic aggregations
-    y = torch.tensor(y_.values, dtype=torch.float32)
-    y_national = torch.tensor(y_national_.values, dtype=torch.float32)
-    y_state = torch.tensor(y_state_.values, dtype=torch.float32)
-
-    r = torch.tensor(state_mask, dtype=torch.float32)
-
-    district_to_state_matrix = create_district_to_state_matrix()
-
-    def loss(w):
-        pred = (w.unsqueeze(-1) * metrics.unsqueeze(0)).sum(dim=1)
-        mse = torch.mean(((pred - y) / y) ** 2)
-
-        pred_n = (w.sum(axis=0) * metrics.T).sum(axis=1)
-        mse_n = torch.mean(((pred_n - y_national) / y_national) ** 2)
-
-        pred_s = torch.sparse.mm(district_to_state_matrix, pred)
-        mse_s = torch.mean(((pred_s - y_state) / y_state) ** 2)
-
-        return mse + mse_n + mse_s
-
-    optimizer = torch.optim.Adam([weights], lr=0.15)
-
-    desc = range(32) if os.environ.get("DATA_LITE") else range(epochs)
-    final_weights = (torch.exp(weights) * r).detach().numpy()
-
-    for epoch in desc:
-        optimizer.zero_grad()
-        weights_ = torch.exp(weights) * r
-        loss_value = loss(weights_)
-        loss_value.backward()
-        optimizer.step()
-
-        if epoch % 1 == 0:
-            print(f"Loss: {loss_value.item()}, Epoch: {epoch}")
-        if epoch % 10 == 0:
-            final_weights = (torch.exp(weights) * r).detach().numpy()
-
-            with h5py.File(
-                get_data_directory()
-                / "output"
-                / "congressional_district_weights.h5",
-                "w",
-            ) as f:
-                f.create_dataset("2023", data=final_weights)
-
-            if overwrite_ecps:
-                with h5py.File(
-                    get_data_directory() / "input" / "cps" / "cps_2023.h5",
-                    "r+",
-                ) as f:
-                    hh_weight_ds_name = (
-                        "district_reweighting/household_weight/2023"
-                    )
-                    if hh_weight_ds_name in f:
-                        del f[hh_weight_ds_name]
-                    f.create_dataset(
-                        hh_weight_ds_name, data=final_weights.sum(axis=0)
-                    )
-
-                    district_weight_ds_name = (
-                        "district_reweighting/district_weight/2023"
-                    )
-                    if district_weight_ds_name in f:
-                        del f[district_weight_ds_name]
-                    f.create_dataset(
-                        district_weight_ds_name, data=final_weights.sum(axis=1)
-                    )
-
-                    state_weight_ds_name = (
-                        "district_reweighting/state_weight/2023"
-                    )
-                    if state_weight_ds_name in f:
-                        del f[state_weight_ds_name]
-                    f.create_dataset(
-                        state_weight_ds_name,
-                        data=(
-                            district_to_state_matrix.to_dense().numpy()
-                            @ final_weights.sum(axis=1)
-                        ),
-                    )
-
-    return final_weights
+    calibration.calibrate()
+    calibration.performance_df.to_csv("calibration_log.csv", index=False)
 
 
 if __name__ == "__main__":
