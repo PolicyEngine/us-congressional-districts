@@ -17,7 +17,7 @@ import torch
 from microcalibrate import Calibration
 import logging
 
-# TODO (baogorek): A task is to use the mapping matrix
+# TO DO (baogorek): A task is to use the mapping matrix
 from us_congressional_districts.district_mapping import (
     get_district_mapping_matrix,
 )
@@ -181,7 +181,7 @@ def create_target_matrix(ages, soi_targets):
 
     for variable, df_var in agi_with_labels.groupby("VARIABLE", sort=False):
         for band, df_band in df_var.groupby("band", sort=False):
-            y[f"soi/{variable}/count/{band}"] = df_band["VALUE"].values
+            y[f"soi/{variable}/{band}"] = df_band["VALUE"].values
 
     return y
 
