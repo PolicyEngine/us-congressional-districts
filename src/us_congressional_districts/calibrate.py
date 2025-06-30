@@ -384,7 +384,7 @@ def calibrate():
         weights=weights,
         target_names=target_names,
         estimate_function=estimate_targets,
-        epochs=256,
+        epochs=512,
         learning_rate=0.2,
     )
 
