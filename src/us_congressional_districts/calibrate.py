@@ -98,6 +98,8 @@ def create_district_metric_matrix(
         sim_calculations[variable] = values
     state_code = sim.calculate("state_code").values
 
+    snap_hh = (sim.calculate('snap_reported') > 0).astype(int)
+
     matrix = pd.DataFrame()
 
     for age_range in age_ranges:
@@ -166,12 +168,16 @@ def create_district_metric_matrix(
 
         matrix[col] = metric
 
+    # SNAP addition to the matrix
+    matrix["benefits/snap_indicator"] = snap_hh
+    
+    # Final processing
     matrix["state_code"] = state_code
 
     return matrix
 
 
-def create_target_matrix(ages, soi_targets):
+def create_target_matrix(ages, soi_targets, benefits_targets):
     """
     Create an aggregate target matrix for the appropriate geographic area
 
@@ -179,6 +185,7 @@ def create_target_matrix(ages, soi_targets):
         ages: a data frame containing GEO_ID and GEO_NAME as the first two columns,
           with target variables afterwards
         soi_targets: a data frame containing GEO_ID and GEO_NAME as the first and last columns,
+        benefits_targets: a data frame keyed by GEO_ID with benefit related target values
     """
     ages_count_matrix = ages.iloc[:, 2:]
     age_ranges = list(ages_count_matrix.columns)
@@ -200,7 +207,9 @@ def create_target_matrix(ages, soi_targets):
     for variable, df_var in agi_with_labels.groupby("VARIABLE", sort=False):
         for band, df_band in df_var.groupby("band", sort=False):
             y[f"soi/{variable}/{band}"] = df_band["VALUE"].values
-
+    y["benefits/snap_indicator"] = benefits_targets.loc[
+        benefits_targets.VARIABLE == "snap_households"
+    ]["VALUE"]
     return y
 
 
@@ -316,6 +325,9 @@ def calibrate():
     agi_data_by_district = pd.read_csv(
         get_data_directory() / "input" / "soi" / "agi_district.csv"
     )
+    snap_data_by_district = pd.read_csv(
+        get_data_directory() / "input" / "benefits" / "cleaned_snap_district.csv"
+    )
 
     target_district_names = age_data_by_district.GEO_NAME
 
@@ -327,7 +339,7 @@ def calibrate():
     )
 
     targets_by_district = create_target_matrix(
-        age_data_by_district, agi_data_by_district
+        age_data_by_district, agi_data_by_district, snap_data_by_district
     )
 
     count_districts, count_targets = targets_by_district.shape
