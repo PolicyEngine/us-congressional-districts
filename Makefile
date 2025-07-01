@@ -18,7 +18,7 @@ documentation:
 	python docs/add_plotly_to_book.py docs
 
 test:
-	echo "No tests yet"
+	pytest tests/test_calibration_quality.py  --maxfail=0 -v
 
 format:
 	black . -l 79
