@@ -296,7 +296,7 @@ def calibrate():
         pd.read_csv(
             get_data_directory() / "input" / "demographics" / "age.csv"
         )
-        .iloc[52:]
+        .iloc[51:]
         .reset_index(drop=True)
     )  # for now only district targets
     agi_data_by_district = pd.read_csv(
