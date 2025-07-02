@@ -129,5 +129,10 @@ def combine_geography_levels() -> None:
     combined.to_csv(out_path, index=False)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Main function to generate combined SOI targets."""
     combine_geography_levels()
+
+
+if __name__ == "__main__":
+    main()

@@ -2,6 +2,7 @@ from pathlib import Path
 
 from typing import Callable, Optional, Union
 
+import logging
 import numpy as np
 import pandas as pd
 
@@ -13,6 +14,8 @@ from us_congressional_districts.pull_geography_ids import get_geography_ids
 
 
 """Utilities to pull AGI targets from the IRS SOI data files."""
+
+logger = logging.getLogger(__name__)
 
 GEO_ID_NAMES = get_geography_ids()
 ID_TO_NAME = GEO_ID_NAMES.set_index("GEO_ID")["GEO_NAME"].to_dict()
@@ -55,18 +58,18 @@ NATIONAL_VARIABLES = {
     "employment_income/amount": 21,
     "self_employment_income/count": 32,
     "self_employment_income/amount": 33,
-    "qualified_dividend_income/count": 28,
-    "qualified_dividend_income/amount": 29,
-    "taxable_interest_income/count": 22,
-    "taxable_interest_income/amount": 23,
-    "unemployment_compensation/count": 41,
-    "unemployment_compensation/amount": 42,
-    "taxable_pension_income/count": 38,
-    "taxable_pension_income/amount": 39,
-    "real_estate_taxes/count": 75,
-    "real_estate_taxes/amount": 76,
-    "qualified_business_income_deduction/count": 95,
-    "qualified_business_income_deduction/amount": 96,
+    # "qualified_dividend_income/count": 28,
+    # "qualified_dividend_income/amount": 29,
+    # "taxable_interest_income/count": 22,
+    # "taxable_interest_income/amount": 23,
+    # "unemployment_compensation/count": 41,
+    # "unemployment_compensation/amount": 42,
+    # "taxable_pension_income/count": 38,
+    # "taxable_pension_income/amount": 39,
+    # "real_estate_taxes/count": 75,
+    # "real_estate_taxes/amount": 76,
+    # "qualified_business_income_deduction/count": 95,
+    # "qualified_business_income_deduction/amount": 96,
 }
 
 # the state and district SOI file have targets as column names:
@@ -90,24 +93,6 @@ GEOGRAPHY_VARIABLES = {
     # "qualified_business_income_deduction/count": "N04475",
     # "qualified_business_income_deduction/amount": "A04475",
 }
-
-
-def get_code_name_map() -> dict:
-    demographics = get_data_directory() / "input" / "demographics"
-    age_district = pd.read_csv(demographics / "age_district.csv")
-    age_state = pd.read_csv(demographics / "age_state.csv")
-    age_national = pd.read_csv(demographics / "age_national.csv")
-
-    for df in [age_district, age_state, age_national]:
-        df = df[["GEO_ID", "GEO_NAME"]]
-
-    combined = pd.concat(
-        [age_district, age_state, age_national], ignore_index=True
-    )
-    return combined.set_index("GEO_ID")["GEO_NAME"].to_dict()
-
-
-code_to_name = get_code_name_map()
 
 
 def pull_national_soi_variable(
@@ -208,7 +193,7 @@ def pull_state_soi_variable(
     result["AGI_UPPER_BOUND"] = result["agi_bracket"].map(
         lambda b: AGI_BOUNDS[b][1]
     )
-    result["GEO_NAME"] = result["GEO_ID"].map(code_to_name)
+    result["GEO_NAME"] = result["GEO_ID"].map(ID_TO_NAME)
 
     # final column order
     result = result[
@@ -266,7 +251,7 @@ def pull_district_soi_variable(
     result["AGI_UPPER_BOUND"] = result["agi_bracket"].map(
         lambda b: AGI_BOUNDS[b][1]
     )
-    result["GEO_NAME"] = result["GEO_ID"].map(code_to_name)
+    result["GEO_NAME"] = result["GEO_ID"].map(ID_TO_NAME)
 
     # final column order
     result = result[
@@ -287,6 +272,34 @@ def pull_district_soi_variable(
     return result
 
 
+def _get_soi_data(geo_level: str) -> pd.DataFrame:
+    """
+    geo_level ∈ {'National', 'State', 'District'}
+    Returns a DataFrame with all SOI variables for the specified geography level
+    """
+    if geo_level == "National":
+        var_indices = NATIONAL_VARIABLES
+        variable_pull = pull_national_soi_variable
+    elif geo_level == "State":
+        var_indices = GEOGRAPHY_VARIABLES
+        variable_pull = pull_state_soi_variable
+    elif geo_level == "District":
+        var_indices = GEOGRAPHY_VARIABLES
+        variable_pull = pull_district_soi_variable
+    else:
+        raise ValueError("geo_level must be National, State or District")
+
+    df = pd.DataFrame()
+    for variable, identifyer in var_indices.items():
+        variable_df = variable_pull(
+            soi_variable_ident=identifyer,
+            variable_name=variable,
+            is_count=1 if variable.endswith("count") else 0,
+        )
+        df = pd.concat([df, variable_df], ignore_index=True)
+    return df
+
+
 def create_targets(
     var_indices: dict[str : Union[int, str]],
     variable_pull: Callable[..., pd.DataFrame],
@@ -303,21 +316,121 @@ def create_targets(
     return df
 
 
-def main() -> None:
+def combine_geography_levels() -> None:
+    """Combine SOI data across geography levels with validation and rescaling."""
+    national = _get_soi_data("National")
+    state = _get_soi_data("State")
+    district = _get_soi_data("District")
+
+    # Add state FIPS codes for validation
+    state["STATEFIPS"] = state["GEO_ID"].str[-2:]
+    district["STATEFIPS"] = district["GEO_ID"].str[-4:-2]
+
+    # Get unique variables and AGI brackets for iteration
+    variables = national["VARIABLE"].unique()
+    agi_brackets = national[
+        ["AGI_LOWER_BOUND", "AGI_UPPER_BOUND"]
+    ].drop_duplicates()
+
+    # Validate and rescale state totals against national totals
+    for variable in variables:
+        for _, bracket in agi_brackets.iterrows():
+            lower, upper = (
+                bracket["AGI_LOWER_BOUND"],
+                bracket["AGI_UPPER_BOUND"],
+            )
+
+            # Get national total for this variable/bracket combination
+            nat_mask = (
+                (national["VARIABLE"] == variable)
+                & (national["AGI_LOWER_BOUND"] == lower)
+                & (national["AGI_UPPER_BOUND"] == upper)
+            )
+            us_total = national.loc[nat_mask, "VALUE"].iloc[0]
+
+            # Get state total for this variable/bracket combination
+            state_mask = (
+                (state["VARIABLE"] == variable)
+                & (state["AGI_LOWER_BOUND"] == lower)
+                & (state["AGI_UPPER_BOUND"] == upper)
+            )
+            state_total = state.loc[state_mask, "VALUE"].sum()
+
+            # Rescale states if they don't match national total
+            if not np.isclose(state_total, us_total, rtol=1e-3):
+                logger.warning(
+                    f"States' sum does not match national total for {variable} "
+                    f"in bracket [{lower}, {upper}]. Rescaling state targets."
+                )
+                state.loc[state_mask, "VALUE"] *= us_total / state_total
+
+    # Validate and rescale district totals against state totals
+    for variable in variables:
+        for _, bracket in agi_brackets.iterrows():
+            lower, upper = (
+                bracket["AGI_LOWER_BOUND"],
+                bracket["AGI_UPPER_BOUND"],
+            )
+
+            # Create masks for this variable/bracket combination
+            state_mask = (
+                (state["VARIABLE"] == variable)
+                & (state["AGI_LOWER_BOUND"] == lower)
+                & (state["AGI_UPPER_BOUND"] == upper)
+            )
+            district_mask = (
+                (district["VARIABLE"] == variable)
+                & (district["AGI_LOWER_BOUND"] == lower)
+                & (district["AGI_UPPER_BOUND"] == upper)
+            )
+
+            # Get state totals indexed by STATEFIPS
+            state_totals = state.loc[state_mask].set_index("STATEFIPS")[
+                "VALUE"
+            ]
+
+            # Get district totals grouped by STATEFIPS
+            district_totals = (
+                district.loc[district_mask].groupby("STATEFIPS")["VALUE"].sum()
+            )
+
+            # Check and rescale districts for each state
+            for fips, d_total in district_totals.items():
+                s_total = state_totals.get(fips)
+
+                if s_total is not None and not np.isclose(
+                    d_total, s_total, rtol=1e-3
+                ):
+                    logger.warning(
+                        f"Districts' sum does not match {fips} state total for {variable} "
+                        f"in bracket [{lower}, {upper}]. Rescaling district targets."
+                    )
+                    rescale_mask = district_mask & (
+                        district["STATEFIPS"] == fips
+                    )
+                    district.loc[rescale_mask, "VALUE"] *= s_total / d_total
+
+    # Combine all data
+    combined = pd.concat(
+        [
+            national,
+            state.drop(columns="STATEFIPS"),
+            district.drop(columns="STATEFIPS"),
+        ],
+        ignore_index=True,
+    ).sort_values(["GEO_ID", "VARIABLE", "AGI_LOWER_BOUND"])
+
+    # Save combined data
     out_dir = Path(get_data_directory()) / "input" / "soi"
     out_dir.mkdir(parents=True, exist_ok=True)
-    national_df = create_targets(
-        NATIONAL_VARIABLES, pull_national_soi_variable
-    )
-    national_df.to_csv(out_dir / "agi_national.csv", index=False)
+    out_path = out_dir / "soi_targets.csv"
+    combined.to_csv(out_path, index=False)
+    logger.info(f"Combined SOI targets saved to {out_path}")
 
-    state_df = create_targets(GEOGRAPHY_VARIABLES, pull_state_soi_variable)
-    state_df.to_csv(out_dir / "agi_state.csv", index=False)
 
-    district_df = create_targets(
-        GEOGRAPHY_VARIABLES, pull_district_soi_variable
-    )
-    district_df.to_csv(out_dir / "agi_district.csv", index=False)
+def main() -> None:
+    """Main function to generate combined SOI targets."""
+    combine_geography_levels()
 
 
 if __name__ == "__main__":

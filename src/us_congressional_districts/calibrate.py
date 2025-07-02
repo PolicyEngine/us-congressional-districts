@@ -292,15 +292,22 @@ def create_target_names(
 
 
 def calibrate():
+    # for now only district targets
     age_data_by_district = (
         pd.read_csv(
             get_data_directory() / "input" / "demographics" / "age.csv"
         )
-        .iloc[51:]
+        .loc[lambda df: df["GEO_ID"].str.startswith("5001800US")]
         .reset_index(drop=True)
-    )  # for now only district targets
-    agi_data_by_district = pd.read_csv(
-        get_data_directory() / "input" / "soi" / "agi_district.csv"
+    )
+    agi_data_by_district = (
+        pd.read_csv(get_data_directory() / "input" / "soi" / "soi_targets.csv")
+        .dropna(
+            subset=["GEO_ID", "GEO_NAME"]
+        )  # Remove rows with NaN geography info
+        .loc[lambda df: df["GEO_ID"].str.startswith("5001800US")]
+        .loc[lambda df: df["GEO_ID"].isin(age_data_by_district["GEO_ID"])]
+        .reset_index(drop=True)
     )
 
     target_district_names = age_data_by_district.GEO_NAME
