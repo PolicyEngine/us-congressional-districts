@@ -292,9 +292,13 @@ def create_target_names(
 
 
 def calibrate():
-    age_data_by_district = pd.read_csv(
-        get_data_directory() / "input" / "demographics" / "age_district.csv"
-    )
+    age_data_by_district = (
+        pd.read_csv(
+            get_data_directory() / "input" / "demographics" / "age.csv"
+        )
+        .iloc[52:]
+        .reset_index(drop=True)
+    )  # for now only district targets
     agi_data_by_district = pd.read_csv(
         get_data_directory() / "input" / "soi" / "agi_district.csv"
     )

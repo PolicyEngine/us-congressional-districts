@@ -9,9 +9,13 @@ from us_congressional_districts.utils import (
     get_data_directory,
     get_state_fips_codes,
 )
+from us_congressional_districts.pull_geography_ids import get_geography_ids
 
 
 """Utilities to pull AGI targets from the IRS SOI data files."""
+
+GEO_ID_NAMES = get_geography_ids()
+ID_TO_NAME = GEO_ID_NAMES.set_index("GEO_ID")["GEO_NAME"].to_dict()
 
 SOI_COLUMNS = [
     "Under $1",
@@ -39,8 +43,7 @@ AGI_BOUNDS = {
     "$500,000 or more": (500_000, np.inf),
 }
 
-NON_VOTING_STATES = {"US", "AS", "GU", "MP", "PR", "VI", "DC", "OA"}
-
+NON_VOTING_STATES = {"US", "AS", "GU", "MP", "PR", "VI", "OA"}  # keep DC
 
 ### Add variables and their indices or column names to the dictionaries below to pull them from the SOI files. Make sure to add "_count" at the end of a varaible name if it is a count variable (instead of a total amount variable).
 
@@ -56,6 +59,14 @@ NATIONAL_VARIABLES = {
     "qualified_dividend_income/amount": 29,
     "taxable_interest_income/count": 22,
     "taxable_interest_income/amount": 23,
+    "unemployment_compensation/count": 41,
+    "unemployment_compensation/amount": 42,
+    "taxable_pension_income/count": 38,
+    "taxable_pension_income/amount": 39,
+    "real_estate_taxes/count": 75,
+    "real_estate_taxes/amount": 76,
+    "qualified_business_income_deduction/count": 95,
+    "qualified_business_income_deduction/amount": 96,
 }
 
 # the state and district SOI file have targets as column names:
@@ -66,10 +77,18 @@ GEOGRAPHY_VARIABLES = {
     "employment_income/amount": "A00200",
     "self_employment_income/count": "N00900",
     "self_employment_income/amount": "A00900",
-    "qualified_dividend_income/count": "N00650",
-    "qualified_dividend_income/amount": "A00650",
-    "taxable_interest_income/count": "N00300",
-    "taxable_interest_income/amount": "A00300",
+    # "qualified_dividend_income/count": "N00650",
+    # "qualified_dividend_income/amount": "A00650",
+    # "taxable_interest_income/count": "N00300",
+    # "taxable_interest_income/amount": "A00300",
+    # "unemployment_compensation/count": "N02300",
+    # "unemployment_compensation/amount": "A02300",
+    # "taxable_pension_income/count": "N01700",
+    # "taxable_pension_income/amount": "A01700",
+    # "real_estate_taxes/count": "N18500",
+    # "real_estate_taxes/amount": "A18500",
+    # "qualified_business_income_deduction/count": "N04475",
+    # "qualified_business_income_deduction/amount": "A04475",
 }
 
 
@@ -128,7 +147,7 @@ def pull_national_soi_variable(
         }
     )
 
-    result["GEO_NAME"] = result["GEO_ID"].map(code_to_name)
+    result["GEO_NAME"] = ["US"] * len(agi_brackets)
     # final column order
     result = result[
         ["GEO_ID", "GEO_NAME", "AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VALUE"]
@@ -176,7 +195,7 @@ def pull_state_soi_variable(
 
     result = (
         df.loc[
-            ~df["STATE"].isin(NON_VOTING_STATES),  # drop territories + DC
+            ~df["STATE"].isin(NON_VOTING_STATES),  # drop territories
             ["GEO_ID", "agi_bracket", soi_variable_ident],
         ]
         .rename(columns={soi_variable_ident: "VALUE"})
@@ -231,15 +250,10 @@ def pull_district_soi_variable(
         .nunique()
         .pipe(lambda s: s[s == 1].index)
     )
-    df = (
-        df.loc[
-            (df["CONG_DISTRICT"] != "00")
-            | (df["STATEFIPS"].isin(at_large_states))
-        ]
-        .query("STATEFIPS != '11'")  # drop DC
-        .reset_index(drop=True)
-    )
-    assert df["GEO_ID"].nunique() == 435
+    df = df.loc[
+        (df["CONG_DISTRICT"] != "00") | (df["STATEFIPS"].isin(at_large_states))
+    ].reset_index(drop=True)
+    assert df["GEO_ID"].nunique() == 436
 
     df["agi_bracket"] = df["agi_stub"].map(AGI_STUB_TO_BAND)
     result = df[

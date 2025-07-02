@@ -1,6 +1,7 @@
 .PHONY: data
 
 targets:
+	python src/us_congressional_districts/pull_geography_ids.py
 	python src/us_congressional_districts/pull_age_targets.py
 	python src/us_congressional_districts/pull_soi_targets.py
 	python src/us_congressional_districts/pull_district_geometries.py
