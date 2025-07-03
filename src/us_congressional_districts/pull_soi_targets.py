@@ -11,6 +11,9 @@ from us_congressional_districts.utils import (
     get_state_fips_codes,
 )
 from us_congressional_districts.pull_geography_ids import get_geography_ids
+from us_congressional_districts.district_mapping import (
+    get_district_mapping_matrix,
+)
 
 
 """Utilities to pull AGI targets from the IRS SOI data files."""
@@ -219,6 +222,7 @@ def pull_district_soi_variable(
     variable_name: Union[str, None],
     is_count: bool,
     district_df: Optional[pd.DataFrame] = None,
+    redistrict: bool = True,
 ) -> pd.DataFrame:
     """Download and save congressional district AGI totals."""
     df = pd.read_csv("https://www.irs.gov/pub/irs-soi/22incd.csv")
@@ -251,7 +255,42 @@ def pull_district_soi_variable(
     result["AGI_UPPER_BOUND"] = result["agi_bracket"].map(
         lambda b: AGI_BOUNDS[b][1]
     )
+
+    if redistrict:
+        result = apply_redistricting(result, variable_name)
+
     result["GEO_NAME"] = result["GEO_ID"].map(ID_TO_NAME)
+
+    if redistrict:
+        geo_id_df = pd.read_csv(
+            Path(get_data_directory())
+            / "input"
+            / "geographies"
+            / "geo_id_name.csv"
+        )
+        valid_district_codes = set(
+            geo_id_df[geo_id_df["GEO_ID"].str.startswith("5001800US")][
+                "GEO_ID"
+            ]
+        )
+
+        # Check that all GEO_IDs are valid
+        produced_codes = set(result["GEO_ID"])
+        invalid_codes = produced_codes - valid_district_codes
+        assert (
+            not invalid_codes
+        ), f"Invalid district codes after redistricting: {invalid_codes}"
+
+        # Check we have exactly 436 districts
+        assert (
+            len(produced_codes) == 436
+        ), f"Expected 436 districts after redistricting, got {len(produced_codes)}"
+
+        # Check that all GEO_IDs successfully mapped to names
+        missing_names = result[result["GEO_NAME"].isna()]["GEO_ID"].unique()
+        assert (
+            len(missing_names) == 0
+        ), f"GEO_IDs without names in ID_TO_NAME mapping: {missing_names}"
 
     # final column order
     result = result[
@@ -268,6 +307,117 @@ def pull_district_soi_variable(
         # If a DataFrame is passed, we append the new data to it.
         df = pd.concat([district_df, result], ignore_index=True)
         return df
+
+    return result
+
+
+def apply_redistricting(
+    df: pd.DataFrame,
+    variable_name: str,
+) -> pd.DataFrame:
+    """Apply redistricting transformation to congressional district data."""
+    mapping_matrix = get_district_mapping_matrix()
+    mapping_df = pd.read_csv(
+        Path(get_data_directory())
+        / "input"
+        / "geographies"
+        / "district_mapping.csv"
+    )
+
+    # Get sorted lists of old and new codes (to match the matrix ordering)
+    old_codes = sorted(mapping_df["code_old"].unique())
+    new_codes = sorted(mapping_df["code_new"].unique())
+
+    old_to_idx = {code: i for i, code in enumerate(old_codes)}
+
+    assert mapping_matrix.shape == (
+        436,
+        436,
+    ), f"Expected 436x436 matrix, got {mapping_matrix.shape}"
+    assert np.allclose(
+        mapping_matrix.sum(axis=1), 1.0
+    ), "Mapping proportions don't sum to 1"
+
+    # Process each AGI bracket separately
+    result_dfs = []
+
+    for bracket in (
+        df[["AGI_LOWER_BOUND", "AGI_UPPER_BOUND"]]
+        .drop_duplicates()
+        .itertuples()
+    ):
+        bracket_df = df[
+            (df["AGI_LOWER_BOUND"] == bracket.AGI_LOWER_BOUND)
+            & (df["AGI_UPPER_BOUND"] == bracket.AGI_UPPER_BOUND)
+        ].copy()
+
+        # Create value vector for old districts (436 elements)
+        old_values = np.zeros(436)
+        for _, row in bracket_df.iterrows():
+            geo_id = row["GEO_ID"]
+
+            # Handle DC special case: SOI uses 1100, current map uses 1198
+            if geo_id == "5001800US1100":
+                geo_id = "5001800US1198"
+
+            if geo_id in old_to_idx:
+                idx = old_to_idx[geo_id]
+                old_values[idx] = row["VALUE"]
+
+        # Apply transformation: new = matrix^T @ old
+        new_values = mapping_matrix.T @ old_values
+
+        # Create new dataframe with redistributed values
+        new_rows = []
+        for i, new_code in enumerate(new_codes):
+            # Include ALL values, even zeros, to maintain district structure
+            state_fips = new_code[-4:-2]
+            district = new_code[-2:]
+
+            new_row = {
+                "GEO_ID": new_code,
+                "CONG_DISTRICT": district,
+                "STATE": state_fips,  # This is FIPS code, not abbreviation
+                "agi_bracket": bracket_df.iloc[0]["agi_bracket"],
+                "AGI_LOWER_BOUND": bracket.AGI_LOWER_BOUND,
+                "AGI_UPPER_BOUND": bracket.AGI_UPPER_BOUND,
+                "VALUE": new_values[i],
+            }
+            new_rows.append(new_row)
+
+        if new_rows:
+            result_dfs.append(pd.DataFrame(new_rows))
+
+    # Combine all brackets
+    if result_dfs:
+        result = pd.concat(result_dfs, ignore_index=True)
+    else:
+        # If no result_dfs, create empty DataFrame with proper structure
+        result = pd.DataFrame(
+            columns=[
+                "GEO_ID",
+                "CONG_DISTRICT",
+                "STATE",
+                "agi_bracket",
+                "AGI_LOWER_BOUND",
+                "AGI_UPPER_BOUND",
+                "VALUE",
+            ]
+        )
+
+    logger.info(f"Redistricting complete for {variable_name}")
+    logger.info(
+        f"Old districts: {len(old_codes)}, New districts: {len(new_codes)}"
+    )
+
+    # Verify total preservation
+    old_total = df["VALUE"].sum()
+    new_total = result["VALUE"].sum()
+    if not np.isclose(old_total, new_total, rtol=1e-6):
+        logger.error(
+            f"Total value changed during redistricting: {old_total} -> {new_total}"
+        )
+        raise ValueError(f"Total value not preserved during redistricting")
 
     return result
 

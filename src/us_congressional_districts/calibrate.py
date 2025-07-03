@@ -17,37 +17,6 @@ import torch
 from microcalibrate import Calibration
 import logging
 
-# TO DO (baogorek): A task is to use the mapping matrix
-from us_congressional_districts.district_mapping import (
-    get_district_mapping_matrix,
-)
-
-
-matrix_path = Path(
-    get_data_directory(), "input", "geographies", "district_mapping.csv"
-)
-
-# Mapping matrix logic -----
-mapping_df = pd.read_csv(matrix_path)
-old_codes = sorted(mapping_df.code_old.unique())
-new_codes = sorted(mapping_df.code_new.unique())
-
-assert (
-    len(old_codes) == len(new_codes) == 435
-), "Still not 435×435 after filtering!"
-
-old_index = {c: i for i, c in enumerate(old_codes)}
-new_index = {c: j for j, c in enumerate(new_codes)}
-
-mapping_matrix = np.zeros((435, 435), dtype=float)
-
-for row in mapping_df.itertuples(index=False):
-    i = old_index[row.code_old]
-    j = new_index[row.code_new]
-    mapping_matrix[i, j] = row.proportion
-
-assert np.allclose(mapping_matrix.sum(axis=1), 1.0), "Row totals aren't 1.0"
-
 
 def get_dataset(dataset: str = "cps_2023", time_period=2023) -> pd.DataFrame:
     """
@@ -302,11 +271,7 @@ def calibrate():
     )
     agi_data_by_district = (
         pd.read_csv(get_data_directory() / "input" / "soi" / "soi_targets.csv")
-        .dropna(
-            subset=["GEO_ID", "GEO_NAME"]
-        )  # Remove rows with NaN geography info
         .loc[lambda df: df["GEO_ID"].str.startswith("5001800US")]
-        .loc[lambda df: df["GEO_ID"].isin(age_data_by_district["GEO_ID"])]
         .reset_index(drop=True)
     )
 

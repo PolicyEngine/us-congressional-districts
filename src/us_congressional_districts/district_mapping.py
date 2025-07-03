@@ -180,13 +180,28 @@ def build_crosswalk_cd116_to_cd119():
         lambda s: s / s.sum()
     )
 
+    ## add DC's district
+    dc_row = pd.DataFrame(
+        {
+            "state_fips": ["11"],  # DC’s FIPS
+            "CD116": ["98"],  # at-large code in the BEF files
+            "CD119": ["98"],
+            "pop_shared": [689545],
+            "code_old": ["5001800US1198"],
+            "code_new": ["5001800US1198"],
+            "proportion": [1.0],
+        }
+    )
+
+    shares = pd.concat([shares, dc_row], ignore_index=True)
+
     district_mapping = (
         shares[["code_old", "code_new", "proportion"]]
         .sort_values(["code_old", "proportion"], ascending=[True, False])
         .reset_index(drop=True)
     )
-    assert len(set(district_mapping.code_old)) == 435
-    assert len(set(district_mapping.code_new)) == 435
+    assert len(set(district_mapping.code_old)) == 436
+    assert len(set(district_mapping.code_new)) == 436
     mapping_path = Path(
         get_data_directory(), "input", "geographies", "district_mapping.csv"
     )
@@ -194,7 +209,7 @@ def build_crosswalk_cd116_to_cd119():
 
 
 def get_district_mapping_matrix():
-    """Puts the 435 by 435 (old by new) district mapping matrix into memory"""
+    """Puts the 436 by 436 - with DC - (old by new) district mapping matrix into memory"""
     mapping_path = Path(
         get_data_directory(), "input", "geographies", "district_mapping.csv"
     )
@@ -202,12 +217,12 @@ def get_district_mapping_matrix():
 
     old_codes = sorted(mapping_df.code_old.unique())
     new_codes = sorted(mapping_df.code_new.unique())
-    assert len(old_codes) == len(new_codes) == 435
+    assert len(old_codes) == len(new_codes) == 436
 
     old_index = {c: i for i, c in enumerate(old_codes)}
     new_index = {c: j for j, c in enumerate(new_codes)}
 
-    mapping_matrix = np.zeros((435, 435), dtype=float)
+    mapping_matrix = np.zeros((436, 436), dtype=float)
 
     for row in mapping_df.itertuples(index=False):
         i = old_index[row.code_old]

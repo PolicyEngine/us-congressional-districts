@@ -11,6 +11,7 @@ def get_state_fips_codes():
         "co": "08",
         "ct": "09",
         "de": "10",
+        "dc": "11",  # Washington DC
         "fl": "12",
         "ga": "13",
         "hi": "15",
