@@ -41,12 +41,24 @@ def get_agi_band_label(lower: float, upper: float) -> str:
         return f"{int(lower)}_{int(upper)}"
 
 
-def create_district_metric_matrix(
+def create_metric_matrix(
     dataset: str = None,
     ages: pd.DataFrame = pd.DataFrame(),
     soi_targets: pd.DataFrame = pd.DataFrame(),
     time_period: int = 2023,
 ):
+    """
+    Create metric matrix for multi-level calibration (national, state, district).
+
+    Args:
+        dataset: Dataset to use for simulation
+        ages: DataFrame with age targets for all geographic levels
+        soi_targets: DataFrame with SOI targets for all geographic levels
+        time_period: Year for calculation
+
+    Returns:
+        DataFrame with metrics for each household, including geographic identifiers
+    """
     ages_count_matrix = ages.iloc[:, 2:]
     age_ranges = list(ages_count_matrix.columns)
 
@@ -72,7 +84,9 @@ def create_district_metric_matrix(
             sim_calculations[variable] = sim.map_result(
                 values, values_entity, "tax_unit"
             )
+
     state_code = sim.calculate("state_code").values
+    state_fips = sim.calculate("state_fips").values
 
     matrix = pd.DataFrame()
 
@@ -83,13 +97,38 @@ def create_district_metric_matrix(
         else:
             in_age_band = age >= 85
 
-        matrix[f"age/{age_range}"] = sim.map_result(
-            in_age_band, "person", "household"
-        )
+        # First map age band to household level
+        in_age_band = sim.map_result(in_age_band, "person", "household")
+
+        # Create age metrics for each geographic level
+        for geo_id in ages["GEO_ID"].unique():
+            if geo_id.startswith("0100000US"):
+                level_prefix = "national"
+                geo_mask = np.ones(len(in_age_band), dtype=bool)
+            elif geo_id.startswith("0400000US"):
+                state_fips_code = int(geo_id[9:11])
+                level_prefix = f"state_{state_fips_code:02d}"
+                geo_mask = state_fips == state_fips_code
+            elif geo_id.startswith("5001800US"):
+                district_code = geo_id[9:13]
+                state_fips_code = int(geo_id[9:11])
+                level_prefix = f"district_{district_code}"
+                geo_mask = state_fips == state_fips_code
+            else:
+                continue
+
+            combined_mask = in_age_band * geo_mask.astype(float)
+            matrix[f"age/{level_prefix}/{age_range}"] = combined_mask
 
     agi_long = (
         soi_targets[
-            ["AGI_LOWER_BOUND", "AGI_UPPER_BOUND", "VARIABLE", "IS_COUNT"]
+            [
+                "GEO_ID",
+                "AGI_LOWER_BOUND",
+                "AGI_UPPER_BOUND",
+                "VARIABLE",
+                "IS_COUNT",
+            ]
         ]
         .drop_duplicates()
         .sort_values(["IS_COUNT", "VARIABLE", "AGI_LOWER_BOUND"])
@@ -99,45 +138,88 @@ def create_district_metric_matrix(
         lower, upper = row.AGI_LOWER_BOUND, row.AGI_UPPER_BOUND
         band = get_agi_band_label(lower, upper)
         var = row.VARIABLE.replace("/count", "").replace("/amount", "")
-        is_count = row.IS_COUNT  # 1 → True, 0 → False
+        is_count = row.IS_COUNT
+        geo_id = row.GEO_ID
         var_values = sim_calculations[var]
 
         mask = (sim_calculations["adjusted_gross_income"] > lower) & (
             sim_calculations["adjusted_gross_income"] <= upper
         )
 
+        # Determine geographic level and create appropriate mask
+        if geo_id.startswith("0100000US"):
+            geo_mask = np.ones(len(state_fips), dtype=bool)
+            level_prefix = "national"
+        elif geo_id.startswith("0400000US"):
+            state_fips_code = int(geo_id[9:11])
+            geo_mask = state_fips == state_fips_code
+            level_prefix = f"state_{state_fips_code:02d}"
+        elif geo_id.startswith("5001800US"):
+            district_code = geo_id[9:13]
+            state_fips_code = int(geo_id[9:11])
+            geo_mask = state_fips == state_fips_code
+            level_prefix = f"district_{district_code}"
+        else:
+            continue
+
+        # Map geographic mask to tax_unit level
+        geo_mask = sim.map_result(
+            geo_mask.astype(float), "household", "tax_unit"
+        )
+        combined_mask = mask & (geo_mask > 0)
+
         if is_count:
-            col = f"soi/{var}/count/{band}"
-            metric = mask * (var_values > 0).astype(float)  # COUNT
+            col = f"soi/{level_prefix}/{var}/count/{band}"
+            metric = combined_mask * (var_values > 0).astype(float)
             metric = sim.map_result(metric, "tax_unit", "household")
         else:
-            col = f"soi/{var}/amount/{band}"
-            metric = var_values * mask  # AMOUNT
+            col = f"soi/{level_prefix}/{var}/amount/{band}"
+            metric = var_values * combined_mask
             metric = sim.map_result(metric, "tax_unit", "household")
 
         matrix[col] = metric
 
     matrix["state_code"] = state_code
+    matrix["state_fips"] = state_fips
 
     return matrix
 
 
 def create_target_matrix(ages, soi_targets):
     """
-    Create an aggregate target matrix for the appropriate geographic area
+    Create an aggregate target matrix for multi-level calibration (national, state, district).
 
     Args:
-        ages: a data frame containing GEO_ID and GEO_NAME as the first two columns,
-          with target variables afterwards
-        soi_targets: a data frame containing GEO_ID and GEO_NAME as the first and last columns,
+        ages: DataFrame containing GEO_ID and GEO_NAME,
+          with target variables afterwards for all geographic levels
+        soi_targets: DataFrame containing GEO_ID and GEO_NAME with SOI targets for all geographic levels
     """
     ages_count_matrix = ages.iloc[:, 2:]
     age_ranges = list(ages_count_matrix.columns)
 
-    y = pd.DataFrame()
-    for age_range in age_ranges:
-        y[f"age/{age_range}"] = ages[age_range]
+    # Initialize target dictionary
+    targets_dict = {}
 
+    # Create age targets for each geographic level
+    for idx, row in ages.iterrows():
+        geo_id = row["GEO_ID"]
+
+        if geo_id.startswith("0100000US"):
+            level_prefix = "national"
+        elif geo_id.startswith("0400000US"):
+            state_fips_code = int(geo_id[9:11])
+            level_prefix = f"state_{state_fips_code:02d}"
+        elif geo_id.startswith("5001800US"):
+            district_code = geo_id[9:13]
+            level_prefix = f"district_{district_code}"
+        else:
+            continue
+
+        for age_range in age_ranges:
+            col_name = f"age/{level_prefix}/{age_range}"
+            targets_dict[col_name] = row[age_range]
+
+    # Create SOI targets with geographic level indicators
     agi_with_labels = soi_targets.assign(
         band=lambda df: df.apply(
             lambda r: get_agi_band_label(r.AGI_LOWER_BOUND, r.AGI_UPPER_BOUND),
@@ -148,9 +230,28 @@ def create_target_matrix(ages, soi_targets):
         ["IS_COUNT", "VARIABLE", "AGI_LOWER_BOUND"]
     )
 
-    for variable, df_var in agi_with_labels.groupby("VARIABLE", sort=False):
-        for band, df_band in df_var.groupby("band", sort=False):
-            y[f"soi/{variable}/{band}"] = df_band["VALUE"].values
+    for _, row in agi_with_labels.iterrows():
+        geo_id = row["GEO_ID"]
+        variable = row["VARIABLE"]
+        band = row["band"]
+        value = row["VALUE"]
+
+        if geo_id.startswith("0100000US"):
+            level_prefix = "national"
+        elif geo_id.startswith("0400000US"):
+            state_fips_code = int(geo_id[9:11])
+            level_prefix = f"state_{state_fips_code:02d}"
+        elif geo_id.startswith("5001800US"):
+            district_code = geo_id[9:13]
+            level_prefix = f"district_{district_code}"
+        else:
+            continue
+
+        col_name = f"soi/{level_prefix}/{variable}/{band}"
+        targets_dict[col_name] = value
+
+    # Convert to DataFrame
+    y = pd.DataFrame([targets_dict])
 
     return y
 
@@ -250,48 +351,29 @@ def create_households(
     return synth_households
 
 
-def create_target_names(
-    targets_by_district: pd.DataFrame, district_names: np.ndarray
-) -> list:
-    targets = []
-    for district in district_names:
-        for age_band in targets_by_district.columns:
-            targets.append(f"{district}/{age_band}")
-    return np.array(targets)
-
-
 def calibrate():
-    # for now only district targets
-    age_data_by_district = (
-        pd.read_csv(
-            get_data_directory() / "input" / "demographics" / "age.csv"
-        )
-        .loc[lambda df: df["GEO_ID"].str.startswith("5001800US")]
-        .reset_index(drop=True)
+    age_data_all_levels = pd.read_csv(
+        get_data_directory() / "input" / "demographics" / "age.csv"
     )
-    agi_data_by_district = (
-        pd.read_csv(get_data_directory() / "input" / "soi" / "soi_targets.csv")
-        .loc[lambda df: df["GEO_ID"].str.startswith("5001800US")]
-        .reset_index(drop=True)
+    agi_data_all_levels = pd.read_csv(
+        get_data_directory() / "input" / "soi" / "soi_targets.csv"
     )
 
-    target_district_names = age_data_by_district.GEO_NAME
+    # Keep district-level data for household creation logic
+    age_data_by_district = age_data_all_levels.loc[
+        lambda df: df["GEO_ID"].str.startswith("5001800US")
+    ].reset_index(drop=True)
 
-    data_by_household = create_district_metric_matrix(
+    data_by_household = create_metric_matrix(
         dataset=get_dataset("cps_2023", 2023),
-        ages=age_data_by_district,
-        soi_targets=agi_data_by_district,
+        ages=age_data_all_levels,
+        soi_targets=agi_data_all_levels,
         time_period=2023,
     )
 
-    targets_by_district = create_target_matrix(
-        age_data_by_district, agi_data_by_district
-    )
+    targets = create_target_matrix(age_data_all_levels, agi_data_all_levels)
 
-    count_districts, count_targets = targets_by_district.shape
-    target_names = create_target_names(
-        targets_by_district, target_district_names
-    )
+    target_names = list(targets.columns)
 
     households = create_households(
         sample_per_district=1_000,
@@ -303,32 +385,29 @@ def calibrate():
     device = "mps:0" if torch.backends.mps.is_available() else "cpu"
 
     data_by_household_tensor = torch.tensor(
-        data_by_household.drop(columns=["state_code"]).astype(float).values,
+        data_by_household.drop(columns=["state_code", "state_fips"])
+        .astype(float)
+        .values,
         dtype=torch.float32,
         device=device,
     )
     households_tensor = torch.tensor(
         households.values, dtype=torch.int64, device=device
     )
-    targets = targets_by_district.values.flatten()
+    targets = targets.values.flatten()
 
     def estimate_targets(weights: torch.Tensor) -> torch.Tensor:
         """
-        Estimate targets based on the weights.
+        Estimate targets based on the weights for multi-level calibration.
 
         Args:
-            weights: Shape [43500] - one weight per (district, household) pair
+            weights: Shape [N] - one weight per (district, household) pair
 
         Returns:
-            Shape [435*36] - flattened estimated targets for all districts and target variables (currently age, agi count, agi amount)
+            Shape [count_targets] - flattened estimated targets for all geographic levels
         """
-        # Extract household and district indices (note the order!)
-        household_indices = households_tensor[
-            :, 0
-        ]  # Shape: [435000] - actual household IDs
-        district_indices = households_tensor[
-            :, 1
-        ]  # Shape: [435000] - district indices (0-434)
+        # Extract household indices
+        household_indices = households_tensor[:, 0]
 
         # Get household data for the sampled households
         sampled_household_data = data_by_household_tensor[household_indices]
@@ -336,20 +415,11 @@ def calibrate():
         # Apply weights: multiply each household's demographics by its weight
         weighted_household_data = weights.unsqueeze(1) * sampled_household_data
 
-        # Sum weighted household data by district
-        estimated_targets = torch.zeros(
-            count_districts,
-            count_targets,
-            dtype=torch.float32,
-            device=weights.device,
-        )
-        estimated_targets.scatter_add_(
-            0,
-            district_indices.unsqueeze(1).expand(-1, count_targets),
-            weighted_household_data,
-        )
+        # Sum weighted household data across all households
+        # This gives us the estimated values for each metric column
+        estimated_values = weighted_household_data.sum(dim=0)
 
-        return estimated_targets.flatten()
+        return estimated_values
 
     # Set to warning logging level
 
