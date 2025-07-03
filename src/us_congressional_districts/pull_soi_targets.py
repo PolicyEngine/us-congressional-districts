@@ -370,7 +370,6 @@ def apply_redistricting(
         # Create new dataframe with redistributed values
         new_rows = []
         for i, new_code in enumerate(new_codes):
-            # Include ALL values, even zeros, to maintain district structure
             state_fips = new_code[-4:-2]
             district = new_code[-2:]
 
