@@ -125,6 +125,12 @@ def combine_geography_levels() -> None:
         ignore_index=True,
     ).sort_values("GEO_ID")
 
+    # Ensure all age columns are numeric before saving
+    for col in AGE_COLS:
+        combined[col] = pd.to_numeric(combined[col], errors="coerce").astype(
+            int
+        )
+
     out_path = SAVE_DIR / "age.csv"
     combined.to_csv(out_path, index=False)
 
