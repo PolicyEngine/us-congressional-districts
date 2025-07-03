@@ -242,7 +242,6 @@ def pull_district_soi_variable(
     df = df.loc[
         (df["CONG_DISTRICT"] != "00") | (df["STATEFIPS"].isin(at_large_states))
     ].reset_index(drop=True)
-    assert df["GEO_ID"].nunique() == 436
 
     df["agi_bracket"] = df["agi_stub"].map(AGI_STUB_TO_BAND)
     result = df[
@@ -260,6 +259,8 @@ def pull_district_soi_variable(
         result = apply_redistricting(result, variable_name)
 
     result["GEO_NAME"] = result["GEO_ID"].map(ID_TO_NAME)
+
+    assert df["GEO_ID"].nunique() == 436
 
     if redistrict:
         geo_id_df = pd.read_csv(

@@ -109,7 +109,7 @@ def combine_geography_levels() -> None:
         for fips, d_total in district_totals.items():
             s_total = state_totals.get(fips)
 
-            if ~np.isclose(d_total, s_total):
+            if not np.isclose(d_total, s_total):
                 logger.warning(
                     f"Districts' sum population does not match {fips} state total for age band: {col}. Reescaling district targets."
                 )
@@ -127,16 +127,14 @@ def combine_geography_levels() -> None:
 
     # Ensure all age columns are numeric before saving
     for col in AGE_COLS:
-        combined[col] = pd.to_numeric(combined[col], errors="coerce").astype(
-            int
-        )
+        combined[col] = combined[col].round().astype(int)
 
     out_path = SAVE_DIR / "age.csv"
     combined.to_csv(out_path, index=False)
 
 
 def main() -> None:
-    """Main function to generate combined SOI targets."""
+    """Main function to generate combined age targets."""
     combine_geography_levels()
 
 

@@ -183,7 +183,7 @@ def build_crosswalk_cd116_to_cd119():
     ## add DC's district
     dc_row = pd.DataFrame(
         {
-            "state_fips": ["11"],  # DC’s FIPS
+            "state_fips": ["11"],  # DC's FIPS
             "CD116": ["98"],  # at-large code in the BEF files
             "CD119": ["98"],
             "pop_shared": [689545],
