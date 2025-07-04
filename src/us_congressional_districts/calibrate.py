@@ -17,6 +17,9 @@ import torch
 from microcalibrate import Calibration
 import logging
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 
 def get_dataset(dataset: str = "cps_2023", time_period=2023) -> pd.DataFrame:
     """
@@ -364,6 +367,9 @@ def calibrate():
         lambda df: df["GEO_ID"].str.startswith("5001800US")
     ].reset_index(drop=True)
 
+    logger.info(
+        "Creating metric matrix for calibration at all geography levels..."
+    )
     data_by_household = create_metric_matrix(
         dataset=get_dataset("cps_2023", 2023),
         ages=age_data_all_levels,
@@ -371,10 +377,12 @@ def calibrate():
         time_period=2023,
     )
 
+    logger.info("Creating target matrix for soi and age targets...")
     targets = create_target_matrix(age_data_all_levels, agi_data_all_levels)
 
     target_names = list(targets.columns)
 
+    logger.info("Creating 1000 households per district...")
     households = create_households(
         sample_per_district=1_000,
         data_by_household=data_by_household,
@@ -423,8 +431,9 @@ def calibrate():
 
     # Set to warning logging level
 
-    logging.basicConfig(level=logging.ERROR)
+    # logging.basicConfig(level=logging.ERROR)
 
+    logging.info("Initializing calibration...")
     calibration = Calibration(
         targets=targets,
         weights=weights,

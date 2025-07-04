@@ -82,7 +82,7 @@ GEOGRAPHY_VARIABLES = {
     # "employment_income/count": "N00200",
     # "employment_income/amount": "A00200",
     # "self_employment_income/count": "N00900",
-    # "self_employment_income/amount": "A00900",
+    # "self_employment_income/amount": "A00900",
     # "qualified_dividend_income/count": "N00650",
     # "qualified_dividend_income/amount": "A00650",
     # "taxable_interest_income/count": "N00300",
