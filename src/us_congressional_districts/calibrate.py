@@ -350,12 +350,18 @@ def create_households(
     synth_households = pd.DataFrame()
     state_codes = age_data_by_district.GEO_NAME.apply(lambda x: x[:2])
     for district in age_data_by_district.index:
-        state_subset = data_by_household[
-            data_by_household["state_code"] == state_codes[district]
-        ]
+        # Filter to households that are actually in California (state_fips == 6)
+        ca_households = data_by_household[data_by_household["state_fips"] == 6]
+
+        if len(ca_households) == 0:
+            logger.warning(
+                f"No California households found for district {district}"
+            )
+            continue
+
         households_in_district = pd.DataFrame(
             {
-                "household_id": state_subset.sample(
+                "household_id": ca_households.sample(
                     sample_per_district, replace=True
                 ).index.values,
             }
@@ -383,19 +389,16 @@ def calibrate():
         f"Loaded {len(age_data_all_levels)} age rows, {len(agi_data_all_levels)} SOI rows"
     )
 
-    # TEMPORARY: Limit to a small subset to test the concept
-    # Filter to just national, California (state 06), and a few California districts for testing
-    logger.info("Filtering to small subset for testing...")
+    # Focus on California state + all California districts
+    logger.info(
+        "Filtering to California state and ALL California districts..."
+    )
     age_data_subset = age_data_all_levels[
-        age_data_all_levels["GEO_ID"].str.match(
-            r"^(0100000US|0400000US06|5001800US060[0-5])"
-        )
+        age_data_all_levels["GEO_ID"].str.match(r"^(0400000US06|5001800US06)")
     ].reset_index(drop=True)
 
     agi_data_subset = agi_data_all_levels[
-        agi_data_all_levels["GEO_ID"].str.match(
-            r"^(0100000US|0400000US06|5001800US060[0-5])"
-        )
+        agi_data_all_levels["GEO_ID"].str.match(r"^(0400000US06|5001800US06)")
     ].reset_index(drop=True)
 
     logger.info(
@@ -427,11 +430,12 @@ def calibrate():
 
     logger.info("Creating 1000 households per district...")
     households = create_households(
-        sample_per_district=1_000,
+        sample_per_district=100,
         data_by_household=data_by_household,
         age_data_by_district=age_data_by_district,
     )
-    weights = np.ones(len(households)) * (150e6 / len(households))
+
+    weights = np.ones(len(households))
 
     device = "mps:0" if torch.backends.mps.is_available() else "cpu"
 
