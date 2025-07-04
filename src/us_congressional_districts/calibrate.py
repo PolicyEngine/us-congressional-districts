@@ -17,6 +17,9 @@ import torch
 from microcalibrate import Calibration
 import logging
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -62,9 +65,15 @@ def create_metric_matrix(
     Returns:
         DataFrame with metrics for each household, including geographic identifiers
     """
+    logger.info("Starting create_metric_matrix...")
     ages_count_matrix = ages.iloc[:, 2:]
     age_ranges = list(ages_count_matrix.columns)
 
+    logger.info(
+        f"Processing {len(age_ranges)} age ranges across {len(ages)} geographic areas"
+    )
+
+    logger.info("Creating microsimulation...")
     sim = Microsimulation(dataset=dataset)
     sim.default_calculation_period = time_period
 
@@ -93,7 +102,8 @@ def create_metric_matrix(
 
     matrix = pd.DataFrame()
 
-    for age_range in age_ranges:
+    logger.info("Starting age metrics creation...")
+    for i, age_range in enumerate(age_ranges):
         if age_range != "85+":
             lower_age, upper_age = age_range.split("-")
             in_age_band = (age >= int(lower_age)) & (age < int(upper_age))
@@ -104,7 +114,11 @@ def create_metric_matrix(
         in_age_band = sim.map_result(in_age_band, "person", "household")
 
         # Create age metrics for each geographic level
-        for geo_id in ages["GEO_ID"].unique():
+        unique_geo_ids = ages["GEO_ID"].unique()
+        logger.info(
+            f"Age range {i+1}/{len(age_ranges)} ({age_range}): processing {len(unique_geo_ids)} geographic areas"
+        )
+        for j, geo_id in enumerate(unique_geo_ids):
             if geo_id.startswith("0100000US"):
                 level_prefix = "national"
                 geo_mask = np.ones(len(in_age_band), dtype=bool)
@@ -355,6 +369,9 @@ def create_households(
 
 
 def calibrate():
+    logger.info("Starting calibration...")
+
+    logger.info("Loading data files...")
     age_data_all_levels = pd.read_csv(
         get_data_directory() / "input" / "demographics" / "age.csv"
     )
@@ -362,25 +379,51 @@ def calibrate():
         get_data_directory() / "input" / "soi" / "soi_targets.csv"
     )
 
+    logger.info(
+        f"Loaded {len(age_data_all_levels)} age rows, {len(agi_data_all_levels)} SOI rows"
+    )
+
+    # TEMPORARY: Limit to a small subset to test the concept
+    # Filter to just national, California (state 06), and a few California districts for testing
+    logger.info("Filtering to small subset for testing...")
+    age_data_subset = age_data_all_levels[
+        age_data_all_levels["GEO_ID"].str.match(
+            r"^(0100000US|0400000US06|5001800US060[0-5])"
+        )
+    ].reset_index(drop=True)
+
+    agi_data_subset = agi_data_all_levels[
+        agi_data_all_levels["GEO_ID"].str.match(
+            r"^(0100000US|0400000US06|5001800US060[0-5])"
+        )
+    ].reset_index(drop=True)
+
+    logger.info(
+        f"Filtered to {len(age_data_subset)} age rows, {len(agi_data_subset)} SOI rows"
+    )
+
     # Keep district-level data for household creation logic
-    age_data_by_district = age_data_all_levels.loc[
+    age_data_by_district = age_data_subset.loc[
         lambda df: df["GEO_ID"].str.startswith("5001800US")
     ].reset_index(drop=True)
 
     logger.info(
-        "Creating metric matrix for calibration at all geography levels..."
+        f"Creating metric matrix for {len(age_data_subset)} geographic areas..."
     )
     data_by_household = create_metric_matrix(
         dataset=get_dataset("cps_2023", 2023),
-        ages=age_data_all_levels,
-        soi_targets=agi_data_all_levels,
+        ages=age_data_subset,
+        soi_targets=agi_data_subset,
         time_period=2023,
     )
 
+    logger.info(f"Metric matrix created with shape: {data_by_household.shape}")
+
     logger.info("Creating target matrix for soi and age targets...")
-    targets = create_target_matrix(age_data_all_levels, agi_data_all_levels)
+    targets = create_target_matrix(age_data_subset, agi_data_subset)
 
     target_names = list(targets.columns)
+    logger.info(f"Target matrix created with {len(target_names)} targets")
 
     logger.info("Creating 1000 households per district...")
     households = create_households(
