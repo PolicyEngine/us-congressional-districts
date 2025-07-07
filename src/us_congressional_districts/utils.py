@@ -57,6 +57,10 @@ def get_state_fips_codes():
     }
 
 
+def state_abbr_from_fips():
+    return {v: k for k, v in get_state_fips_codes().items()}
+
+
 def get_data_directory() -> pathlib.Path:
     """
     Determines the absolute path to the 'us-congressional-districts/inputs' directory,
