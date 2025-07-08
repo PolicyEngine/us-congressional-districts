@@ -479,7 +479,8 @@ def subsample_targets(how: list[str]) -> str:
 
 
 def calibrate(
-    how: Optional[Union[list[str], str]] = ["20", "10"],
+    how: Optional[Union[list[str], str]] = ["national"],
+    initial_weights: Optional[np.ndarray] = None,
 ) -> pd.DataFrame:
     """
     Calibrate US national, state, and district-level targets using microcalibrate for age and soi variables.
@@ -572,7 +573,10 @@ def calibrate(
     if missing:
         logger.warning(f"Missing columns in metric matrix: {missing}")
 
-    weights = np.ones(len(synth_households))
+    if initial_weights is not None:
+        weights = initial_weights
+    else:
+        weights = np.ones(len(synth_households))
 
     device = "mps:0" if torch.backends.mps.is_available() else "cpu"
 
@@ -667,7 +671,7 @@ def calibrate(
     calibration.calibrate()
     calibration.performance_df.to_csv("calibration_log.csv", index=False)
 
-    return calibration.performance_df
+    return calibration.performance_df, calibration.weights
 
 
 if __name__ == "__main__":
