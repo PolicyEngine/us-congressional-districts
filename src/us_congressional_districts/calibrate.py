@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import h5py
 from huggingface_hub import hf_hub_download
-from typing import Optional
+from typing import Optional, Union
 
 from policyengine_core.data import Dataset
 from policyengine_us import Microsimulation
@@ -56,155 +56,6 @@ def get_state_abbr_from_fips(fips_code: str) -> str:
     return state_abbr_dict.get(fips_code)
 
 
-def create_metric_matrix(
-    sim: Microsimulation,
-    sim_calculations: dict,
-    ages: pd.DataFrame,
-    soi_targets: pd.DataFrame,
-    households: pd.DataFrame,
-):
-    """
-    Create metric matrix for multi-level calibration (national, state, district).
-
-    Args:
-        dataset: Dataset to use for simulation
-        ages: DataFrame with age targets for all geographic levels
-        soi_targets: DataFrame with SOI targets for all geographic levels
-        time_period: Year for calculation
-
-    Returns:
-        DataFrame with metrics for each household, including geographic identifiers
-    """
-    ages_count_matrix = ages.iloc[:, 2:]
-    age_ranges = list(ages_count_matrix.columns)
-
-    # Use passed simulation data
-    age = sim.calculate("age").values
-    state_code = sim.calculate("state_code").values
-    state_fips = sim.calculate("state_fips").values
-
-    matrix = pd.DataFrame()
-
-    for i, age_range in enumerate(age_ranges):
-        if age_range != "85+":
-            lower_age, upper_age = age_range.split("-")
-            in_age_band = (age >= int(lower_age)) & (age <= int(upper_age))
-        else:
-            in_age_band = age >= 85
-
-        # Map age band to household level
-        in_age_band = sim.map_result(
-            in_age_band, "person", "household", how="sum"
-        )
-
-        # Create age metrics for each geographic level
-        unique_geo_ids = ages["GEO_ID"].unique()
-        for j, geo_id in enumerate(unique_geo_ids):
-            if geo_id.startswith("0100000US"):
-                level_prefix = "national"
-                geo_mask = np.ones(len(in_age_band), dtype=bool)
-            elif geo_id.startswith("0400000US"):
-                state_fips_code = geo_id[9:11]
-                level_prefix = (
-                    f"state_{get_state_abbr_from_fips(state_fips_code)}"
-                )
-                geo_mask = state_fips == int(state_fips_code)
-            elif geo_id.startswith("5001800US"):
-                district_code = geo_id[11:13]
-                state_fips_code = geo_id[9:11]
-                level_prefix = f"district_{get_state_abbr_from_fips(state_fips_code)}{district_code}"
-                # Create mask for households in this specific state AND district
-                state_mask = state_fips == int(state_fips_code)
-                district_int = int(district_code)
-                hhs = households.loc[
-                    households["district"] == district_int, "household_id"
-                ]
-                geo_mask = np.zeros(len(in_age_band), dtype=bool)
-                # Use household IDs to create boolean mask - find positions where household index matches
-                household_mask = np.isin(
-                    np.arange(len(state_mask)), hhs.values
-                )
-                geo_mask = household_mask & state_mask
-            else:
-                continue
-
-            combined_mask = in_age_band * geo_mask.astype(float)
-            matrix[f"age/{level_prefix}/{age_range}"] = combined_mask
-
-    agi_long = (
-        soi_targets[
-            [
-                "GEO_ID",
-                "AGI_LOWER_BOUND",
-                "AGI_UPPER_BOUND",
-                "VARIABLE",
-                "IS_COUNT",
-            ]
-        ]
-        .drop_duplicates()
-        .sort_values(["IS_COUNT", "VARIABLE", "AGI_LOWER_BOUND"])
-    )
-
-    for _, row in agi_long.iterrows():
-        lower, upper = row.AGI_LOWER_BOUND, row.AGI_UPPER_BOUND
-        band = get_agi_band_label(lower, upper)
-        var = row.VARIABLE.replace("/count", "").replace("/amount", "")
-        is_count = row.IS_COUNT
-        geo_id = row.GEO_ID
-        var_values = sim_calculations[var]
-
-        mask = (sim_calculations["adjusted_gross_income"] > lower) & (
-            sim_calculations["adjusted_gross_income"] <= upper
-        )
-
-        # Determine geographic level and create appropriate mask
-        if geo_id.startswith("0100000US"):
-            geo_mask = np.ones(len(mask), dtype=bool)
-            level_prefix = "national"
-        elif geo_id.startswith("0400000US"):
-            state_fips_code = geo_id[9:11]
-            geo_mask = state_fips == int(state_fips_code)
-            level_prefix = f"state_{get_state_abbr_from_fips(state_fips_code)}"
-        elif geo_id.startswith("5001800US"):
-            district_code = geo_id[11:13]
-            state_fips_code = geo_id[9:11]
-            level_prefix = f"district_{get_state_abbr_from_fips(state_fips_code)}{district_code}"
-            # Create mask for households in this specific state AND district
-            state_mask = state_fips == int(state_fips_code)
-            district_int = int(district_code)
-            hhs = households.loc[
-                households["district"] == district_int, "household_id"
-            ]
-            geo_mask = np.zeros(len(state_fips), dtype=bool)
-            # Use household IDs to create boolean mask - find positions where household index matches
-            household_mask = np.isin(np.arange(len(state_mask)), hhs.values)
-            geo_mask = household_mask & state_mask
-        else:
-            continue
-
-        # Map geographic mask to tax_unit level
-        geo_mask = sim.map_result(
-            geo_mask.astype(float), "household", "tax_unit"
-        )
-        combined_mask = mask & (geo_mask > 0)
-
-        if is_count:
-            col = f"soi/{level_prefix}/{var}/count/{band}"
-            metric = combined_mask * (var_values > 0).astype(float)
-            metric = sim.map_result(metric, "tax_unit", "household")
-        else:
-            col = f"soi/{level_prefix}/{var}/amount/{band}"
-            metric = var_values * combined_mask
-            metric = sim.map_result(metric, "tax_unit", "household")
-
-        matrix[col] = metric
-
-    matrix["state_code"] = state_code
-    matrix["state_fips"] = state_fips
-
-    return matrix
-
-
 def create_target_matrix(ages, soi_targets):
     """
     Create an aggregate target matrix for multi-level calibration (national, state, district).
@@ -217,10 +68,9 @@ def create_target_matrix(ages, soi_targets):
     ages_count_matrix = ages.iloc[:, 2:]
     age_ranges = list(ages_count_matrix.columns)
 
-    # Initialize target dictionary
     targets_dict = {}
 
-    # Create age targets for each geographic level
+    # Create age targets for required geographic levels
     for idx, row in ages.iterrows():
         geo_id = row["GEO_ID"]
 
@@ -278,111 +128,34 @@ def create_target_matrix(ages, soi_targets):
     return y
 
 
-def create_state_mask(
-    dataset: str = None,
-    districts: pd.Series = pd.Series(["5001800US5600"]),
-    time_period: int = 2023,
-) -> np.ndarray:
-    """
-    Create a matrix R to accompany the loss matrix M s.t. (W x M) x R = Y_
-    where Y_ is the target matrix s.t. no target is constructed
-    from weights from a different state.
-    """
-
-    sim = Microsimulation(dataset=dataset)
-    sim.default_calculation_period = time_period
-
-    household_states = sim.calculate("state_fips").values
-    district_states = districts.str[9:11].astype(np.int32)
-    r = np.zeros((len(districts), len(household_states)))
-
-    for i in range(len(districts)):
-        r[i] = household_states == district_states[i]
-
-    return r
-
-
-def create_district_to_state_matrix():
-    """Create [50, 450] sparse binary matrix mapping states to districts"""
-
-    districts = pd.read_csv(
-        get_data_directory() / "input" / "demographics" / "age_district.csv"
-    ).GEO_ID
-
-    states = pd.read_csv(
-        get_data_directory() / "input" / "demographics" / "age_state.csv"
-    ).GEO_ID
-
-    num_districts = len(districts)
-    num_states = len(states)
-
-    district_state_codes = [dist_id[9:11] for dist_id in districts]
-    state_codes = [state_id[9:11] for state_id in states]
-
-    # Create mapping from state code to state index (position in the states Series)
-    state_code_to_idx = {code: idx for idx, code in enumerate(state_codes)}
-
-    # Create indices and values for sparse tensor
-    indices = []
-    for dist_idx, state_code in enumerate(district_state_codes):
-        if state_code in state_code_to_idx:  # Safety check
-            state_idx = state_code_to_idx[state_code]
-            indices.append([state_idx, dist_idx])
-
-    # Check if we have any valid mappings
-    if not indices:
-        raise ValueError(
-            "No valid district-to-state mappings found. Check the ID formats."
-        )
-
-    # Convert to tensors
-    indices = torch.tensor(indices, dtype=torch.long).t()
-    values = torch.ones(len(indices[0]), dtype=torch.float)
-
-    # Create sparse tensor
-    mapping_matrix = torch.sparse.FloatTensor(
-        indices, values, torch.Size([num_states, num_districts])
-    )
-
-    return mapping_matrix
-
-
 def create_households(
     sample_per_district: int,
-    age_data_by_district: pd.DataFrame,
+    age_data_subset: pd.DataFrame,
     target_names: list,
+    how: list[str],
     dataset: str = "cps_2023",
     time_period: int = 2023,
-    states: Optional[pd.Series] = None,  # fips code
 ):
     """
-    Create household assignments and simulation data needed for metric matrix creation.
+    Create household assignments based on the most granular geography level needed.
 
-    Returns:
-        tuple: (households_df, sim_calculations_dict, sim_object)
+    If the district and state levels are needed, the synthetic households created accoding to districting logic will contribute to state targets. This logic applies to all geographic levels: District → State → National.
     """
     sim = Microsimulation(dataset=get_dataset(dataset, time_period))
     sim.default_calculation_period = time_period
 
-    if states is not None:
-        states = set(states.astype(int))
-
-    # Extract needed variables from target names
+    # Calculate needed variables based on target names
     needed_variables = set()
     for target_name in target_names:
         if target_name.startswith("soi/"):
-            # Extract variable name from soi target format
             parts = target_name.split("/")
             if len(parts) >= 3:
                 var_name = (
                     parts[2].replace("/count", "").replace("/amount", "")
                 )
                 needed_variables.add(var_name)
-
-    # Always include AGI for SOI filtering
     needed_variables.add("adjusted_gross_income")
 
-    # Calculate all needed variables
     sim_calculations = {}
     for variable in needed_variables:
         if variable in system.variables:
@@ -395,44 +168,335 @@ def create_households(
                     values, values_entity, "tax_unit"
                 )
 
-    # Create basic household data DataFrame
+    # Get base household data
     data_by_household = pd.DataFrame(
         {
             "state_fips": sim.calculate("state_fips").values,
             "state_code": sim.calculate("state_code").values,
-            "cps_weight": sim.calculate("household_weight").values,
+            "household_weight": sim.calculate("household_weight").values,
         }
     )
 
-    synth_households = []
-    for geo_id in age_data_by_district["GEO_ID"]:
-        state_fips_code = int(geo_id[9:11])
-        district_code = int(geo_id[11:13])
+    # Determine the most granular level needed
+    needs_district = "district" in how or any(h.isdigit() for h in how)
+    needs_state = (
+        "state" in how or any(h.isdigit() for h in how) and not needs_district
+    )
+    needs_national = (
+        "national" in how and not needs_state and not needs_district
+    )
+    states = [h for h in how if h.isdigit()]
 
-        if states is not None and state_fips_code not in states:
-            continue
+    logger.info(
+        f"Geography hierarchy: District={needs_district}, State={True if 'state' in how else False}, National={True if 'national' in how else False}"
+    )
 
-        pool = data_by_household[
-            data_by_household["state_fips"] == state_fips_code
+    # Most granular = District level
+    if needs_district:
+        synth_households = []
+
+        # Get all districts we need to create
+        district_geos = age_data_subset[
+            age_data_subset["GEO_ID"].str.startswith("5001800US")
         ]
-        sample_ids = pool.sample(sample_per_district, replace=True).index
-        synth_households.append(
-            pd.DataFrame(
-                {
-                    "household_id": sample_ids,
-                    "district": district_code,
-                    "weight": data_by_household.loc[
-                        sample_ids, "cps_weight"
-                    ].values,
-                }
+
+        for _, row in district_geos.iterrows():
+            geo_id = row["GEO_ID"]
+            state_fips_code = int(geo_id[9:11])
+            district_code = int(geo_id[11:13])
+
+            # Skip if we're filtering by specific states
+            if len(states) > 0 and state_fips_code not in states:
+                continue
+
+            # Sample from households in this state
+            pool = data_by_household[
+                data_by_household["state_fips"] == state_fips_code
+            ]
+
+            sample_ids = pool.sample(
+                min(sample_per_district, len(pool)), replace=True
+            ).index
+
+            synth_households.append(
+                pd.DataFrame(
+                    {
+                        "household_id": sample_ids,
+                        "district": district_code,
+                        "state_fips": state_fips_code,
+                        "weight": pool.loc[
+                            sample_ids, "household_weight"
+                        ].values,
+                    }
+                )
             )
+
+        synth_households = pd.concat(synth_households, ignore_index=True)
+
+    # Most granular = State level (no districts)
+    elif needs_state:
+        synth_households = []
+
+        # Determine which states we need
+        if len(states) == 0:
+            # We select all states in the data
+            state_geos = age_data_subset[
+                age_data_subset["GEO_ID"].str.startswith("0400000US")
+            ]
+            states = [int(geo_id[9:11]) for geo_id in state_geos["GEO_ID"]]
+
+        for state_fips in states:
+            pool = data_by_household[
+                data_by_household["state_fips"] == state_fips
+            ]
+
+            # For state-level, we can use all households in the state
+            synth_households.append(
+                pd.DataFrame(
+                    {
+                        "household_id": pool.index,
+                        "district": -1,  # No district assignment
+                        "state_fips": state_fips,
+                        "weight": pool["household_weight"].values,
+                    }
+                )
+            )
+
+        synth_households = pd.concat(synth_households, ignore_index=True)
+
+    # Only national level
+    elif needs_national:
+        # All households contribute directly
+        synth_households = pd.DataFrame(
+            {
+                "household_id": np.arange(len(data_by_household)),
+                "district": -1,
+                "state_fips": data_by_household["state_fips"].values,
+                "weight": data_by_household["household_weight"].values,
+            }
         )
 
-    synth_households = pd.concat(synth_households, ignore_index=True)
+    logger.info(
+        f"Created {len(synth_households)} synthetic household assignments"
+    )
+    if needs_state:
+        logger.info(
+            f"Unique states: {synth_households['state_fips'].nunique()}"
+        )
+    if needs_district:
+        logger.info(
+            f"Unique districts: {len(synth_households[synth_households['district'] > 0]['district'].unique())} for {len(synth_households['state_fips'].unique())} states"
+        )
+
     return synth_households, sim_calculations, sim
 
 
-def calibrate():
+def create_metric_matrix(
+    sim: Microsimulation,
+    sim_calculations: dict,
+    ages: pd.DataFrame,
+    soi_targets: pd.DataFrame,
+    households: pd.DataFrame,
+):
+    """
+    Create metric matrix where each synthetic household contributes to all
+    appropriate geography levels in the hierarchy that are being targeted.
+    """
+    ages_count_matrix = ages.iloc[:, 2:]
+    age_ranges = list(ages_count_matrix.columns)
+
+    # Pre-calculate age bands for actual households
+    age = sim.calculate("age").values
+
+    matrix = pd.DataFrame()
+
+    for i, age_range in enumerate(age_ranges):
+        if age_range != "85+":
+            lower_age, upper_age = age_range.split("-")
+            in_age_band = (age >= int(lower_age)) & (age <= int(upper_age))
+        else:
+            in_age_band = age >= 85
+
+        # Map to household level
+        in_age_band = sim.map_result(
+            in_age_band, "person", "household", how="sum"
+        )
+
+        unique_geo_ids = ages["GEO_ID"].unique()
+
+        for _, geo_id in enumerate(unique_geo_ids):
+            if geo_id.startswith("0100000US"):
+                level_prefix = "national"
+                # ALL synthetic households contribute to national
+                geo_mask = np.ones(len(households), dtype=bool)
+
+            elif geo_id.startswith("0400000US"):
+                state_fips_code = int(geo_id[9:11])
+                level_prefix = (
+                    f"state_{get_state_abbr_from_fips(str(state_fips_code))}"
+                )
+                # All households in this state contribute (whether assigned to districts or not)
+                geo_mask = households["state_fips"] == state_fips_code
+
+            elif geo_id.startswith("5001800US"):
+                district_code = int(geo_id[11:13])
+                state_fips_code = int(geo_id[9:11])
+                level_prefix = f"district_{get_state_abbr_from_fips(str(state_fips_code))}{district_code:02d}"
+                # Only households assigned to this specific district
+                geo_mask = (households["district"] == district_code) & (
+                    households["state_fips"] == state_fips_code
+                )
+            else:
+                continue
+
+            # Get values from actual households for the synthetic households selected
+            synthetic_in_age_band = in_age_band[
+                households["household_id"].values
+            ]
+
+            # Apply geographic mask
+            combined_mask = synthetic_in_age_band * geo_mask.astype(float)
+            matrix[f"age/{level_prefix}/{age_range}"] = combined_mask
+
+    agi_long = (
+        soi_targets[
+            [
+                "GEO_ID",
+                "AGI_LOWER_BOUND",
+                "AGI_UPPER_BOUND",
+                "VARIABLE",
+                "IS_COUNT",
+            ]
+        ]
+        .drop_duplicates()
+        .sort_values(["IS_COUNT", "VARIABLE", "AGI_LOWER_BOUND"])
+    )
+
+    for _, row in agi_long.iterrows():
+        lower, upper = row.AGI_LOWER_BOUND, row.AGI_UPPER_BOUND
+        band = get_agi_band_label(lower, upper)
+        var = row.VARIABLE.replace("/count", "").replace("/amount", "")
+        is_count = row.IS_COUNT
+        geo_id = row.GEO_ID
+        var_values = sim_calculations[var]
+
+        # Create AGI mask at tax unit level
+        agi_values = sim_calculations["adjusted_gross_income"]
+        mask = (agi_values > lower) & (agi_values <= upper)
+
+        # Same hierarchical geographic logic
+        if geo_id.startswith("0100000US"):
+            geo_mask = np.ones(len(households), dtype=bool)
+            level_prefix = "national"
+
+        elif geo_id.startswith("0400000US"):
+            state_fips_code = int(geo_id[9:11])
+            geo_mask = households["state_fips"] == state_fips_code
+            level_prefix = (
+                f"state_{get_state_abbr_from_fips(str(state_fips_code))}"
+            )
+
+        elif geo_id.startswith("5001800US"):
+            district_code = int(geo_id[11:13])
+            state_fips_code = int(geo_id[9:11])
+            geo_mask = (households["district"] == district_code) & (
+                households["state_fips"] == state_fips_code
+            )
+            level_prefix = f"district_{get_state_abbr_from_fips(str(state_fips_code))}{district_code:02d}"
+        else:
+            continue
+
+        # Map tax unit values to synthetic households
+        # First map from tax_unit to household
+        if is_count:
+            tax_unit_metric = mask * (var_values > 0).astype(float)
+        else:
+            tax_unit_metric = var_values * mask
+
+        household_metric = sim.map_result(
+            tax_unit_metric, "tax_unit", "household"
+        )
+
+        # Then map from actual household data to the selected synthetic households
+        synthetic_metric = household_metric[households["household_id"].values]
+
+        # Apply geographic mask
+        final_metric = synthetic_metric * geo_mask.astype(float)
+
+        if is_count:
+            col = f"soi/{level_prefix}/{var}/count/{band}"
+        else:
+            col = f"soi/{level_prefix}/{var}/amount/{band}"
+
+        matrix[col] = final_metric
+
+    return matrix
+
+
+def subsample_targets(how: list[str]) -> str:
+    """Subsample targets to reduce data size for calibration.
+
+    Args:
+        age: DataFrame with age targets for all geographic levels.
+        soi_targets: DataFrame with SOI targets for all geographic levels.
+        how: List of strings specifying the level and or sampling method of targets for calibration.
+            Valid options are:
+            - "national": Use national targets only.
+            - "state": Use state-level targets.
+            - "district": Use district-level targets.
+            - a combination of the above, e.g. ["national", "state"].
+            - a list of specific state FIPS codes to use, e.g. ["06", "12"], this will calibrate the state and district targets corresponding to the fips codes.
+    Returns:
+        str: combined regex pattern for filtering targets.
+    """
+    for h in how:
+        if (h not in ["national", "state", "district"]) and (
+            int(h) < 0 or int(h) > 56
+        ):
+            logger.error(
+                f"Invalid 'how' argument value: {h}. Expected 'national', 'state', 'district', or a list of state FIPS codes."
+            )
+    geo_code_patterns = []
+
+    if "national" in how:
+        geo_code_patterns.append("0100000US")
+    if "state" in how:
+        geo_code_patterns.append("0400000US")
+    if "district" in how:
+        geo_code_patterns.append("5001800US")
+    for h in how:
+        if h not in ["national", "state", "district"]:
+            geo_code_patterns.append(f"0400000US{h.zfill(2)}")
+            geo_code_patterns.append(f"5001800US{h.zfill(2)}")
+
+    return f"^({'|'.join(geo_code_patterns)})"
+
+
+def calibrate(
+    how: Optional[Union[list[str], str]] = "national",
+) -> pd.DataFrame:
+    """
+    Calibrate US national, state, and district-level targets using microcalibrate for age and soi variables.
+
+    Args:
+        how: str or list[str] specifying the level and or sampling method of targets for calibration. Default is "national".
+            Valid options are:
+            - "national": Use national targets only.
+            - "state": Use state-level targets.
+            - "district": Use district-level targets.
+            - a combination of the above, e.g. ["national", "state"].
+            - a list of specific state FIPS codes to use, e.g. ["06", "12"], this will calibrate the state and district targets corresponding to the fips codes.
+
+    Returns:
+        pd.DataFrame: Performance DataFrame from the calibration process.
+    """
+    if not isinstance(how, list) and not isinstance(how, str):
+        logger.error(
+            f"Invalid 'how' argument type: {type(how)}. Expected str or list[str]."
+        )
+    if isinstance(how, str):
+        how = [how]
+
     logger.info("Starting calibration...")
 
     logger.info("Loading data files...")
@@ -447,28 +511,17 @@ def calibrate():
         f"Loaded {len(age_data_all_levels)} age rows, {len(agi_data_all_levels)} SOI rows"
     )
 
-    # Focus on specific states and districts to reduce data size
-    states = pd.Series(["10"])
+    # Focus on specific geography levels or fips codes to reduce data size
+    geo_code_pattern = subsample_targets(how)
 
-    logger.info(
-        f"Filtering to {[get_state_abbr_from_fips(fips) for fips in states]} states and their districts..."
-    )
-
-    # Create regex pattern from states variable
-    state_fips_pattern = "|".join(
-        [f"0400000US{fips.zfill(2)}" for fips in states]
-    )
-    district_fips_pattern = "|".join(
-        [f"5001800US{fips.zfill(2)}" for fips in states]
-    )
-    combined_pattern = f"^({state_fips_pattern}|{district_fips_pattern})"
+    logger.info(f"Filtering targets in {how} mode")
 
     age_data_subset = age_data_all_levels[
-        age_data_all_levels["GEO_ID"].str.match(combined_pattern)
+        age_data_all_levels["GEO_ID"].str.match(geo_code_pattern)
     ].reset_index(drop=True)
 
     agi_data_subset = agi_data_all_levels[
-        agi_data_all_levels["GEO_ID"].str.match(combined_pattern)
+        agi_data_all_levels["GEO_ID"].str.match(geo_code_pattern)
     ].reset_index(drop=True)
 
     logger.info(
@@ -480,50 +533,47 @@ def calibrate():
         lambda df: df["GEO_ID"].str.startswith("5001800US")
     ].reset_index(drop=True)
 
-    logger.info(
-        f"Creating metric matrix for {len(age_data_subset)} geographic areas..."
-    )
-    # Create target matrix
     logger.info("Creating target matrix...")
     targets = create_target_matrix(age_data_subset, agi_data_subset)
     target_names = list(targets.columns)
 
-    # Create households and simulation data based on target requirements
-    logger.info("Creating households and simulation data...")
-    households, sim_calculations, sim = create_households(
+    logger.info(f"{len(target_names)} targets were created")
+
+    logger.info(f"Creating households and simulation data with {how} mode...")
+    synth_households, sim_calculations, sim = create_households(
         sample_per_district=500,
-        age_data_by_district=age_data_by_district,
+        age_data_subset=age_data_by_district,
         target_names=target_names,
+        how=how,
         dataset="cps_2023",
         time_period=2023,
-        states=states,
     )
 
-    # Create metric matrix
     logger.info("Creating metric matrix with household filtering...")
     data_by_household = create_metric_matrix(
         sim=sim,
         sim_calculations=sim_calculations,
         ages=age_data_subset,
         soi_targets=agi_data_subset,
-        households=households,
+        households=synth_households,
     )
 
     logger.info(f"Metric matrix created with shape: {data_by_household.shape}")
 
-    weights = households["weight"].to_numpy(copy=True)
+    target_set = set(target_names)
+    metric_set = set(data_by_household.columns)
+    missing = target_set - metric_set
+    if missing:
+        logger.warning(f"Missing columns in metric matrix: {missing}")
+
+    weights = np.ones(len(synth_households))
 
     device = "mps:0" if torch.backends.mps.is_available() else "cpu"
 
     data_by_household_tensor = torch.tensor(
-        data_by_household.drop(columns=["state_code", "state_fips"])
-        .astype(float)
-        .values,
+        data_by_household.astype(float).values,
         dtype=torch.float32,
         device=device,
-    )
-    households_tensor = torch.tensor(
-        households.values, dtype=torch.int64, device=device
     )
     targets = targets.values.flatten()
 
@@ -532,22 +582,20 @@ def calibrate():
         Estimate targets based on the weights for multi-level calibration.
 
         Args:
-            weights: Shape [N] - one weight per (district, household) pair
+            weights: Shape [N] - one weight per synthetic household
 
         Returns:
             Shape [count_targets] - flattened estimated targets for all geographic levels
         """
-        # Extract household indices
-        household_indices = households_tensor[:, 0]
+        # No need to extract indices - data_by_household_tensor is already aligned
+        # with synthetic households
 
-        # Get household data for the sampled households
-        sampled_household_data = data_by_household_tensor[household_indices]
-
-        # Apply weights: multiply each household's demographics by its weight
-        weighted_household_data = weights.unsqueeze(1) * sampled_household_data
+        # Apply weights: multiply each household's metrics by its weight
+        weighted_household_data = (
+            weights.unsqueeze(1) * data_by_household_tensor
+        )
 
         # Sum weighted household data across all households
-        # This gives us the estimated values for each metric column
         estimated_values = weighted_household_data.sum(dim=0)
 
         return estimated_values
