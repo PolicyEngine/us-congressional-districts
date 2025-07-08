@@ -202,8 +202,8 @@ def create_households(
 
         for _, row in district_geos.iterrows():
             geo_id = row["GEO_ID"]
-            state_fips_code = int(geo_id[9:11])
-            district_code = int(geo_id[11:13])
+            state_fips_code = geo_id[9:11]
+            district_code = geo_id[11:13]
 
             # Skip if we're filtering by specific states
             if len(states) > 0 and state_fips_code not in states:
@@ -211,7 +211,7 @@ def create_households(
 
             # Sample from households in this state
             pool = data_by_household[
-                data_by_household["state_fips"] == state_fips_code
+                data_by_household["state_fips"] == int(state_fips_code)
             ]
 
             sample_ids = pool.sample(
@@ -237,17 +237,23 @@ def create_households(
     elif needs_state:
         synth_households = []
 
+        logger.warning(f"states: {states}")
+
         # Determine which states we need
         if len(states) == 0:
             # We select all states in the data
             state_geos = age_data_subset[
                 age_data_subset["GEO_ID"].str.startswith("0400000US")
             ]
-            states = [int(geo_id[9:11]) for geo_id in state_geos["GEO_ID"]]
+            states = [geo_id[9:11] for geo_id in state_geos["GEO_ID"]]
+
+            logger.warning(
+                f"states after theoretically appending all fips: {states}"
+            )
 
         for state_fips in states:
             pool = data_by_household[
-                data_by_household["state_fips"] == state_fips
+                data_by_household["state_fips"] == int(state_fips)
             ]
 
             # For state-level, we can use all households in the state
@@ -267,11 +273,13 @@ def create_households(
     # Only national level
     elif needs_national:
         # All households contribute directly
+        fips = data_by_household["state_fips"].values
+        fips = str(fips) if len(fips) > 1 else "0" + str(fips)
         synth_households = pd.DataFrame(
             {
                 "household_id": np.arange(len(data_by_household)),
                 "district": -1,
-                "state_fips": data_by_household["state_fips"].values,
+                "state_fips": fips,
                 "weight": data_by_household["household_weight"].values,
             }
         )
@@ -331,17 +339,17 @@ def create_metric_matrix(
                 geo_mask = np.ones(len(households), dtype=bool)
 
             elif geo_id.startswith("0400000US"):
-                state_fips_code = int(geo_id[9:11])
+                state_fips_code = geo_id[9:11]
                 level_prefix = (
-                    f"state_{get_state_abbr_from_fips(str(state_fips_code))}"
+                    f"state_{get_state_abbr_from_fips(state_fips_code)}"
                 )
                 # All households in this state contribute (whether assigned to districts or not)
                 geo_mask = households["state_fips"] == state_fips_code
 
             elif geo_id.startswith("5001800US"):
-                district_code = int(geo_id[11:13])
-                state_fips_code = int(geo_id[9:11])
-                level_prefix = f"district_{get_state_abbr_from_fips(str(state_fips_code))}{district_code:02d}"
+                district_code = geo_id[11:13]
+                state_fips_code = geo_id[9:11]
+                level_prefix = f"district_{get_state_abbr_from_fips(state_fips_code)}{district_code:02d}"
                 # Only households assigned to this specific district
                 geo_mask = (households["district"] == district_code) & (
                     households["state_fips"] == state_fips_code
@@ -390,19 +398,17 @@ def create_metric_matrix(
             level_prefix = "national"
 
         elif geo_id.startswith("0400000US"):
-            state_fips_code = int(geo_id[9:11])
+            state_fips_code = geo_id[9:11]
             geo_mask = households["state_fips"] == state_fips_code
-            level_prefix = (
-                f"state_{get_state_abbr_from_fips(str(state_fips_code))}"
-            )
+            level_prefix = f"state_{get_state_abbr_from_fips(state_fips_code)}"
 
         elif geo_id.startswith("5001800US"):
-            district_code = int(geo_id[11:13])
-            state_fips_code = int(geo_id[9:11])
+            district_code = geo_id[11:13]
+            state_fips_code = geo_id[9:11]
             geo_mask = (households["district"] == district_code) & (
                 households["state_fips"] == state_fips_code
             )
-            level_prefix = f"district_{get_state_abbr_from_fips(str(state_fips_code))}{district_code:02d}"
+            level_prefix = f"district_{get_state_abbr_from_fips(state_fips_code)}{district_code:02d}"
         else:
             continue
 
@@ -473,7 +479,7 @@ def subsample_targets(how: list[str]) -> str:
 
 
 def calibrate(
-    how: Optional[Union[list[str], str]] = "national",
+    how: Optional[Union[list[str], str]] = "state",
 ) -> pd.DataFrame:
     """
     Calibrate US national, state, and district-level targets using microcalibrate for age and soi variables.
@@ -542,7 +548,7 @@ def calibrate(
     logger.info(f"Creating households and simulation data with {how} mode...")
     synth_households, sim_calculations, sim = create_households(
         sample_per_district=500,
-        age_data_subset=age_data_by_district,
+        age_data_subset=age_data_subset,
         target_names=target_names,
         how=how,
         dataset="cps_2023",
@@ -651,7 +657,11 @@ def calibrate(
         estimate_function=estimate_targets,
         epochs=512,
         learning_rate=0.2,
-        normalization_factor=normalization_factor,
+        normalization_factor=(
+            normalization_factor
+            if (len(how) > 1 and not how.isdigit().any())
+            else None
+        ),
     )
 
     calibration.calibrate()
