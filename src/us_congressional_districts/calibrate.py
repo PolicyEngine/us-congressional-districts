@@ -237,8 +237,6 @@ def create_households(
     elif needs_state:
         synth_households = []
 
-        logger.warning(f"states: {states}")
-
         # Determine which states we need
         if len(states) == 0:
             # We select all states in the data
@@ -246,10 +244,6 @@ def create_households(
                 age_data_subset["GEO_ID"].str.startswith("0400000US")
             ]
             states = [geo_id[9:11] for geo_id in state_geos["GEO_ID"]]
-
-            logger.warning(
-                f"states after theoretically appending all fips: {states}"
-            )
 
         for state_fips in states:
             pool = data_by_household[
@@ -480,6 +474,7 @@ def subsample_targets(how: list[str]) -> str:
 
 def calibrate(
     how: Optional[Union[list[str], str]] = ["national"],
+    dataset: Optional[str] = "cps_2023",
     initial_weights: Optional[np.ndarray] = None,
 ) -> pd.DataFrame:
     """
@@ -552,8 +547,8 @@ def calibrate(
         age_data_subset=age_data_subset,
         target_names=target_names,
         how=how,
-        dataset="enhanced_cps_2024",  # change dataset here
-        time_period=2024,
+        dataset=dataset,
+        time_period=int(dataset.split("_")[-1]) if dataset else 2023,
     )
 
     logger.info("Creating metric matrix with household filtering...")
@@ -614,8 +609,7 @@ def calibrate(
         """
         Create a normalization factor for the targets based on the geography level of each target.
 
-        This ensures that national, state, and district targets each have equal total weight,
-        making the calibration robust to random sampling of targets.
+        This ensures that loss has an equal contribution from each geographic level (instead of each target) during calibration.
 
         Returns:
             Normalization factor as a torch tensor.
@@ -631,17 +625,27 @@ def calibrate(
             ["/district_" in name for name in target_names_array]
         )
 
-        # Calculate normalization factors for each level
-        national_factor = is_national * (1 / max(is_national.sum(), 1))
-        state_factor = is_state * (1 / max(is_state.sum(), 1))
-        district_factor = is_district * (1 / max(is_district.sum(), 1))
+        # Count targets at each level
+        n_national = is_national.sum()
+        n_state = is_state.sum()
+        n_district = is_district.sum()
+        
+        # Calculate total number of geographic levels present
+        n_levels = (n_national > 0) + (n_state > 0) + (n_district > 0)
 
-        # Each geographic level gets equal total weight
-        normalization_factor = np.where(
-            is_national,
-            national_factor,
-            np.where(is_state, state_factor, district_factor),
-        )
+        # Each level gets 1/n_levels of the total weight
+        # Individual targets within a level share that weight equally
+        normalization_factor = np.zeros(len(target_names_array))
+        
+        if n_national > 0:
+            normalization_factor[is_national] = 1.0 / (n_levels * n_national)
+        if n_state > 0:
+            normalization_factor[is_state] = 1.0 / (n_levels * n_state)
+        if n_district > 0:
+            normalization_factor[is_district] = 1.0 / (n_levels * n_district)
+        
+        # Scale up so mean is 1 (preserves loss magnitude)
+        normalization_factor *= len(normalization_factor) / normalization_factor.sum()
 
         return torch.tensor(
             normalization_factor, dtype=torch.float32, device=device
@@ -675,4 +679,4 @@ def calibrate(
 
 
 if __name__ == "__main__":
-    calibrate()
+    calibrate(dataset="enhanced_cps_2024", how=["national"])
