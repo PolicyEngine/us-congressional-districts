@@ -552,8 +552,8 @@ def calibrate(
         age_data_subset=age_data_subset,
         target_names=target_names,
         how=how,
-        dataset="cps_2023",
-        time_period=2023,
+        dataset="enhanced_cps_2024",  # change dataset here
+        time_period=2024,
     )
 
     logger.info("Creating metric matrix with household filtering...")
