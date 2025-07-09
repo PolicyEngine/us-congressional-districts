@@ -87,7 +87,7 @@ def create_target_matrix(ages, soi_targets):
             continue
 
         for age_range in age_ranges:
-            col_name = f"age/{level_prefix}/{age_range}"
+            col_name = f"acs/{level_prefix}/age/count/{age_range}"
             targets_dict[col_name] = row[age_range]
 
     # Create SOI targets with geographic level indicators
@@ -475,6 +475,7 @@ def subsample_targets(how: list[str]) -> str:
 def calibrate(
     how: Optional[Union[list[str], str]] = ["national"],
     dataset: Optional[str] = "cps_2023",
+    time_period: int = 2023,
     initial_weights: Optional[np.ndarray] = None,
 ) -> pd.DataFrame:
     """
@@ -548,7 +549,7 @@ def calibrate(
         target_names=target_names,
         how=how,
         dataset=dataset,
-        time_period=int(dataset.split("_")[-1]) if dataset else 2023,
+        time_period=time_period,
     )
 
     logger.info("Creating metric matrix with household filtering...")
@@ -681,4 +682,4 @@ def calibrate(
 
 
 if __name__ == "__main__":
-    calibrate(dataset="enhanced_cps_2024", how=["national"])
+    calibrate(dataset="enhanced_cps_2024", time_period=2024, how=["national"])
