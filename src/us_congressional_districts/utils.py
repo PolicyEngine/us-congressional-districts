@@ -11,6 +11,7 @@ def get_state_fips_codes():
         "co": "08",
         "ct": "09",
         "de": "10",
+        "dc": "11",  # Washington DC
         "fl": "12",
         "ga": "13",
         "hi": "15",
@@ -54,6 +55,10 @@ def get_state_fips_codes():
         "wi": "55",
         "wy": "56",
     }
+
+
+def state_abbr_from_fips():
+    return {v: k for k, v in get_state_fips_codes().items()}
 
 
 def get_data_directory() -> pathlib.Path:

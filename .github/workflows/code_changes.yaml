@@ -36,7 +36,9 @@ jobs:
             uv pip install -e . --system
             uv pip install policyengine-us --system
         - name: Build data
-          run: make data
+          run: |
+            make targets &&
+            make data
         - name: Save calibration log
           uses: actions/upload-artifact@v4
           with:
