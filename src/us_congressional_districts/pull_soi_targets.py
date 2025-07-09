@@ -69,10 +69,34 @@ NATIONAL_VARIABLES = {
     "unemployment_compensation/amount": 42,
     "taxable_pension_income/count": 38,
     "taxable_pension_income/amount": 39,
-    # "real_estate_taxes/count": 75,
-    # "real_estate_taxes/amount": 76,
-    # "qualified_business_income_deduction/count": 95,
+    "self_employed_pension_contribution_ald/count": 54,
+    "self_employed_pension_contribution_ald/amount": 55,
+    "rental_income/count": 47,
+    "rental_income/amount": 48,
+    # when targeting with age and agi:
+    # "qualified_business_income_deduction/count": 95, # 74% accuracy
     # "qualified_business_income_deduction/amount": 96,
+    # "tax_exempt_interest_income/count": 25, # 78% accuracy
+    # "tax_exempt_interest_income/amount": 26,
+    # "aca_ptc/count": 121, # 7% accuracy
+    # "aca_ptc/amount": 122,
+    # "real_estate_taxes/count": 75, # 3% accuracy
+    # "real_estate_taxes/amount": 76,
+    # "educator_expense/count": 52, # 58% accuracy
+    # "educator_expense/amount": 53,
+    # with all estimates being 0.0:
+    # "self_employed_health_insurance_ald/count": 56, # 63.4% accuracy
+    # "self_employed_health_insurance_ald/amount": 57,
+    # "student_loan_interest_ald/count": 59, # 73.6% accuracy
+    # "student_loan_interest_ald/amount": 60,
+    # "partnership_s_corp_income/count": 45, # 53% accuracy
+    # "partnership_s_corp_income/amount": 46,
+    # "foreign_tax_credit/count": 107,
+    # "foreign_tax_credit/amount": 108,
+    # "american_opportunity_credit/count": 111,
+    # "american_opportunity_credit/amount": 112,
+    # energy_efficient_home_improvement_credit/count": 117,
+    # "energy_efficient_home_improvement_credit/amount": 118,
 }
 
 # the state and district SOI file have targets as column names:
@@ -91,10 +115,32 @@ GEOGRAPHY_VARIABLES = {
     "unemployment_compensation/amount": "A02300",
     "taxable_pension_income/count": "N01700",
     "taxable_pension_income/amount": "A01700",
-    # "real_estate_taxes/count": "N18500",
-    # "real_estate_taxes/amount": "A18500",
+    "self_employed_pension_contribution_ald/count": "N03300",
+    "self_employed_pension_contribution_ald/amount": "A03300",
+    "rental_income/count": "N25870",
+    "rental_income/amount": "A25870",
     # "qualified_business_income_deduction/count": "N04475",
     # "qualified_business_income_deduction/amount": "A04475",
+    # "tax_exempt_interest_income/count": "N00400",
+    # "tax_exempt_interest_income/amount": "A00400",
+    # "aca_ptc/count": "N85770",
+    # "aca_ptc/amount": "A85770",
+    # "real_estate_taxes/count": "N18500",
+    # "real_estate_taxes/amount": "A18500",
+    # "educator_expense/count": "N03220",
+    # "educator_expense/amount": "A03220",
+    # "self_employed_health_insurance_ald/count": "N03270",
+    # "self_employed_health_insurance_ald/amount": "A03270",
+    # "student_loan_interest_ald/count": "N03210",
+    # "student_loan_interest_ald/amount": "A03210",
+    # "partnership_s_corp_income/count": "N26270",
+    # "partnership_s_corp_income/amount": "A26270",
+    # "foreign_tax_credit/count": "N07300",
+    # "foreign_tax_credit/amount": "A07300",
+    # american_opportunity_credit/count": "N03230",
+    # "american_opportunity_credit/amount": "A03230",
+    # energy_efficient_home_improvement_credit/count": "N07260",
+    # "energy_efficient_home_improvement_credit/amount": "A07260",
 }
 
 

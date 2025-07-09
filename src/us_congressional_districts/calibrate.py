@@ -629,23 +629,25 @@ def calibrate(
         n_national = is_national.sum()
         n_state = is_state.sum()
         n_district = is_district.sum()
-        
+
         # Calculate total number of geographic levels present
         n_levels = (n_national > 0) + (n_state > 0) + (n_district > 0)
 
         # Each level gets 1/n_levels of the total weight
         # Individual targets within a level share that weight equally
         normalization_factor = np.zeros(len(target_names_array))
-        
+
         if n_national > 0:
             normalization_factor[is_national] = 1.0 / (n_levels * n_national)
         if n_state > 0:
             normalization_factor[is_state] = 1.0 / (n_levels * n_state)
         if n_district > 0:
             normalization_factor[is_district] = 1.0 / (n_levels * n_district)
-        
+
         # Scale up so mean is 1 (preserves loss magnitude)
-        normalization_factor *= len(normalization_factor) / normalization_factor.sum()
+        normalization_factor *= (
+            len(normalization_factor) / normalization_factor.sum()
+        )
 
         return torch.tensor(
             normalization_factor, dtype=torch.float32, device=device
