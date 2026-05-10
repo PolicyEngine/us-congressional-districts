@@ -24,6 +24,16 @@ import us
 from us_congressional_districts.utils import get_data_directory
 
 
+def make_cd_code(state, district):
+    return f"5001800US{str(state).zfill(2)}{str(district).zfill(2)}"
+
+def make_state_code(state):
+    return f"0400000US{str(state).zfill(2)}"
+
+def make_national_code():
+    return f"0100000US"
+
+
 def fetch_block_to_district_map(congress: int) -> pd.DataFrame:
     """
     Fetches the Census Block Equivalency File (BEF) for a given Congress.
@@ -167,9 +177,6 @@ def build_crosswalk_cd116_to_cd119():
         .reset_index()
     )
 
-    def make_cd_code(state, district):
-        return f"5001800US{str(state).zfill(2)}{str(district).zfill(2)}"
-
     shares["code_old"] = shares.apply(
         lambda row: make_cd_code(row.state_fips, row.CD116), axis=1
     )
@@ -231,6 +238,80 @@ def get_district_mapping_matrix():
 
     assert np.allclose(mapping_matrix.sum(axis=1), 1.0)
     return mapping_matrix
+
+
+
+def create_geographies_adjacency_list():
+    # Get census blocks for each district under the 116th and 119th congress
+    # Remove 'ZZ': blocks not assigned to any congressional district
+    df116 = fetch_block_to_district_map(116)
+    df116 = df116.loc[df116["CD116"] != "ZZ"]
+    df116["state_fips"] = df116.GEOID.str[:2]
+
+    df119 = fetch_block_to_district_map(119)
+    df119 = df119.loc[df119["CD119"] != "ZZ"]
+    df119["state_fips"] = df119.GEOID.str[:2]
+
+    # Process the 116th congress  ---- 
+    districts_116th = df116.drop(columns = "GEOID").drop_duplicates()
+
+    districts_116th["geography_id"] = districts_116th.apply(
+        lambda row: make_cd_code(row.state_fips, row.CD116), axis=1
+    )
+    districts_116th["parent_geography_id"] = districts_116th.apply(
+        lambda row: make_state_code(row.state_fips), axis=1
+    )
+
+    ## Remove Puerto Rico 
+    districts_116th = districts_116th.loc[districts_116th.state_fips != '72']
+
+    districts_116th['voting'] = (districts_116th['geography_id'] != '5001800US1198')
+    districts_116th['start_date'] = '1900-01-01'
+    districts_116th['end_date'] = '2022-12-31'
+    districts_116th['geography_type'] = "district"
+
+    # Process the 119th congress  ---- 
+    districts_119th = df119.drop(columns = "GEOID").drop_duplicates()
+
+
+    districts_119th["geography_id"] = districts_119th.apply(
+        lambda row: make_cd_code(row.state_fips, row.CD119), axis=1
+    )
+    districts_119th["parent_geography_id"] = districts_119th.apply(
+        lambda row: make_state_code(row.state_fips), axis=1
+    )
+
+    ## Remove Puerto Rico 
+    districts_119th = districts_119th.loc[districts_119th.state_fips != '72']
+
+    districts_119th['voting'] = (districts_119th['geography_id'] != '5001800US1198')
+    districts_119th['start_date'] = '2023-01-01'
+    districts_119th['end_date'] = '2033-12-31'
+    districts_119th['geography_type'] = "district"
+
+    # Process the states
+    states_df = districts_119th.copy()[['parent_geography_id', 'voting']].drop_duplicates()
+    states_df = states_df.rename({'parent_geography_id': 'geography_id'}, axis=1)
+    states_df['parent_geography_id'] = '0100000US'
+    states_df['geography_type'] = "state-equivalent"
+    states_df['start_date'] = '1900-01-01'
+    states_df['end_date'] = '2050-12-31'
+
+    # National record 
+    national_df = states_df.iloc[[0]].copy()
+    national_df['geography_id'] = '0100000US'
+    national_df['parent_geography_id'] = np.nan
+    national_df['geography_type'] = "nation" 
+
+    cols = ['geography_id', 'parent_geography_id', 'geography_type', 'voting', 'start_date', 'end_date']
+
+    geo_hierarchy_df = pd.concat([national_df[cols], states_df[cols],
+                                  districts_119th[cols], districts_116th[cols]]).reset_index(drop=True)
+
+    geo_path = Path(
+        get_data_directory(), "meta", "geo_hierarchies.csv"
+    )
+    geo_hierarchy_df.to_csv(geo_path, index=False)
 
 
 if __name__ == "__main__":
